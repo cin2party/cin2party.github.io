@@ -68,6 +68,10 @@
   /* Form-style screens must scroll on small viewports — without this, mobile
      browsers clip the bottom (e.g. the Create Room button on #room-setup). */
   #room-setup, #browser { overflow-y: auto; }
+  /* Direct children of scrollable column-flex screens must NOT shrink — otherwise
+     flex shrinks panels to fit the viewport and `.panel { overflow: hidden }` clips
+     buttons (saw on mobile lobby: "이전 방으로 복귀" button cut to a thin strip). */
+  #lobby > *, #room-setup > * { flex-shrink: 0; }
 
   /* ========== LOBBY ========== */
   #lobby {
@@ -949,6 +953,8 @@
     padding: 6px;
     z-index: 25;
     min-width: 180px;
+    max-height: calc(100vh - 130px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+    overflow-y: auto;
     display: none;
   }
   .sub-menu.show { display: block; }
@@ -980,6 +986,8 @@
     padding: 14px;
     z-index: 25;
     width: min(300px, 80vw);
+    max-height: calc(100vh - 130px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+    overflow-y: auto;
     display: none;
   }
   .volume-menu.show { display: block; }
