@@ -1,0 +1,4878 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>씨네 파티 · WebDAV Watch Party</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #13131c;
+    --bg-3: #1c1c28;
+    --bg-4: #252535;
+    --ink: #f4ecd8;
+    --ink-dim: #a8a092;
+    --ink-low: #6b6557;
+    --accent: #ff5722;
+    --accent-soft: #ff572220;
+    --gold: #d4a657;
+    --line: #2a2a38;
+    --danger: #ff4757;
+    --good: #2ed573;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Noto Sans KR', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* Film grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  }
+
+  input, button, textarea {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+  }
+  button { cursor: pointer; border: none; background: none; padding: 0; }
+
+  /* ========== SCREENS ========== */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .screen.active { display: flex; }
+  /* Form-style screens must scroll on small viewports — without this, mobile
+     browsers clip the bottom (e.g. the Create Room button on #room-setup). */
+  #room-setup, #browser { overflow-y: auto; }
+
+  /* ========== LOBBY ========== */
+  #lobby {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, #1f1a2e 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 100% 100%, #2a1a14 0%, transparent 60%),
+      var(--bg);
+    overflow-y: auto;
+  }
+
+  .marquee {
+    padding: 40px 24px 24px;
+    text-align: center;
+    position: relative;
+  }
+  .marquee::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 50px; height: 2px;
+    background: var(--accent);
+  }
+  .marquee .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .marquee h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-size: 40px;
+    line-height: 0.95;
+    margin: 0;
+    letter-spacing: -0.025em;
+  }
+  .marquee h1 em {
+    font-style: italic;
+    color: var(--gold);
+    font-weight: 400;
+    display: block;
+    font-size: 28px;
+    margin-top: 4px;
+  }
+  .marquee .sub {
+    color: var(--ink-dim);
+    font-size: 12px;
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .panel {
+    margin: 24px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .panel-head .ticket {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+  }
+  .panel-head h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .panel-body { padding: 18px; }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--ink-low);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--ink);
+    font-size: 15px;
+    transition: border-color 0.2s;
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .field .hint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--ink-low);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  /* Input with clear button on the right */
+  .input-with-clear {
+    position: relative;
+  }
+  .input-with-clear input {
+    padding-right: 38px;
+  }
+  .input-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-low);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+  }
+  .input-clear:hover {
+    opacity: 1;
+    background: var(--bg-3);
+    color: var(--accent);
+  }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .btn-block { margin-top: 8px; }
+  .btn:disabled { opacity: 0.5; pointer-events: none; }
+
+  .divider {
+    text-align: center;
+    margin: 18px 0;
+    position: relative;
+    color: var(--ink-low);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.2em;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 30px);
+    height: 1px;
+    background: var(--line);
+  }
+  .divider::before { left: 0; }
+  .divider::after { right: 0; }
+
+  .status-line {
+    padding: 10px 18px;
+    background: var(--bg-3);
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    display: none;
+  }
+  .status-line.show { display: block; }
+  .status-line.error { color: var(--danger); }
+  .status-line.success { color: var(--good); }
+
+  /* ========== BROWSER (file picker) ========== */
+  #browser { background: var(--bg); }
+  .topbar {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .topbar .icon-btn {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    color: var(--ink);
+  }
+  .topbar .icon-btn:active { background: var(--bg-3); }
+  .topbar .title {
+    flex: 1;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .crumbs {
+    padding: 8px 14px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .file-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.15s;
+  }
+  .file-item:active { background: var(--bg-2); }
+  .file-icon {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    background: var(--bg-3);
+    flex-shrink: 0;
+  }
+  .file-icon.folder { background: linear-gradient(135deg, var(--gold), #b8893d); color: #1a1a1a; }
+  .file-icon.video { background: linear-gradient(135deg, var(--accent), #c63d10); color: #fff; }
+  .file-meta { flex: 1; min-width: 0; }
+  .file-name {
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-sub {
+    font-size: 11px;
+    color: var(--ink-low);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ========== ROOM SETUP ========== */
+  #room-setup {
+    background:
+      radial-gradient(ellipse at top, #1f1a2e 0%, transparent 60%),
+      var(--bg);
+    overflow-y: auto;
+  }
+
+  /* ========== THEATER ========== */
+  #theater {
+    background: #000;
+    flex-direction: column;
+  }
+  .theater-top {
+    position: absolute;
+    top: env(safe-area-inset-top);
+    left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+    gap: 10px;
+    transition: opacity 0.3s;
+  }
+  .theater-top.hidden { opacity: 0; pointer-events: none; }
+
+  .room-badge {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+  .room-badge .room-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: rgba(255,255,255,0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  .room-badge .room-code:active {
+    background: rgba(255,255,255,0.2);
+  }
+  .room-badge .room-code::after {
+    content: '↗';
+    font-size: 11px;
+    opacity: 0.6;
+  }
+  .room-badge .peer-count {
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--good);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--good); }
+    50% { box-shadow: 0 0 0 6px transparent; }
+  }
+
+  .top-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .top-actions .icon-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    color: var(--ink);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .top-actions .icon-btn.active { background: var(--accent); color: #fff; }
+  .top-actions .icon-btn .badge {
+    position: absolute;
+    top: -2px; right: -2px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+  }
+
+  .video-wrap {
+    flex: 1;
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  /* When the video-wrap itself is fullscreen, fill the screen with black and center the video */
+  .video-wrap:fullscreen,
+  .video-wrap:-webkit-full-screen {
+    background: #000;
+    width: 100vw;
+    height: 100vh;
+  }
+  .video-wrap:fullscreen video#player,
+  .video-wrap:-webkit-full-screen video#player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    max-height: none;
+  }
+  /* Make sure chat-toasts stays on top in fullscreen */
+  .video-wrap:fullscreen .chat-toasts,
+  .video-wrap:-webkit-full-screen .chat-toasts {
+    z-index: 2147483647;
+  }
+  video#player {
+    width: 100%;
+    max-height: 100%;
+    background: #000;
+  }
+  video#player::cue {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-family: 'Noto Sans KR', sans-serif;
+    line-height: 1.4;
+  }
+
+  .controls {
+    position: absolute;
+    bottom: env(safe-area-inset-bottom);
+    left: 0; right: 0;
+    padding: 16px 14px 14px;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    transition: opacity 0.3s;
+    z-index: 10;
+  }
+  .controls.hidden { opacity: 0; pointer-events: none; }
+
+  .progress-track {
+    position: relative;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+  .progress-bar {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    width: 0%;
+    transform-origin: left;
+  }
+  .progress-thumb {
+    position: absolute;
+    top: 50%;
+    width: 14px; height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    left: 0;
+    box-shadow: 0 0 0 4px rgba(255,87,34,0.2);
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 4px;
+  }
+  .time-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    min-width: 90px;
+  }
+  .play-btn {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: grid; place-items: center;
+  }
+  .control-row .icon-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    color: var(--ink);
+    display: grid; place-items: center;
+  }
+  .control-row .icon-btn:active { background: rgba(255,255,255,0.1); }
+  .control-row .icon-btn.active { color: var(--accent); }
+  .spacer { flex: 1; }
+
+  /* ========== SIDE PANEL (chat / participants) ========== */
+  .side-panel {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: min(360px, 88vw);
+    background: var(--bg-2);
+    border-left: 1px solid var(--line);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .side-panel.open { transform: translateX(0); }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-3);
+  }
+  .panel-tab {
+    flex: 1;
+    padding: 14px 12px;
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    position: relative;
+  }
+  .panel-tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+  .panel-tab .count {
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 4px;
+  }
+
+  .panel-content {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-content.active { display: flex; }
+
+  /* Chat */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chat-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 85%;
+  }
+  .chat-msg.self { align-self: flex-end; }
+  .chat-msg .msg-meta {
+    font-size: 10px;
+    color: var(--ink-low);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0 4px;
+  }
+  .chat-msg.self .msg-meta { text-align: right; }
+  .chat-msg .msg-bubble {
+    background: var(--bg-3);
+    padding: 9px 13px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: break-word;
+    user-select: text;
+  }
+  .chat-msg.self .msg-bubble {
+    background: var(--accent);
+    color: #fff;
+  }
+  .chat-msg.system .msg-bubble {
+    background: transparent;
+    color: var(--ink-low);
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 4px 0;
+  }
+  .chat-msg.system { align-self: center; max-width: 100%; }
+
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-3);
+  }
+  .chat-input-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 10px 14px;
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .chat-input-row input:focus { outline: none; border-color: var(--accent); }
+  .chat-input-row button {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: grid;
+    place-items: center;
+  }
+
+  /* Participants */
+  .participants {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .participant {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    background: var(--bg-3);
+  }
+  .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+  }
+  .p-info { flex: 1; min-width: 0; }
+  .p-name {
+    font-size: 14px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .p-status {
+    font-size: 11px;
+    color: var(--ink-low);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+  .p-status .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--good);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .p-icons { display: flex; gap: 4px; color: var(--ink-dim); }
+  .p-icons .on { color: var(--good); }
+  .p-icons .off { color: var(--ink-low); }
+  .speaking-ring {
+    box-shadow: 0 0 0 0 var(--good);
+    animation: speaking 1s infinite;
+  }
+  @keyframes speaking {
+    0%, 100% { box-shadow: 0 0 0 0 var(--good); }
+    50% { box-shadow: 0 0 0 4px transparent; }
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(20,20,28,0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 13px;
+    z-index: 999;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Share modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .modal-head .ticket {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+  }
+  .modal-head h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+  }
+  .modal-head .close-btn {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    color: var(--ink-dim);
+  }
+  .modal-head .close-btn:active { background: var(--bg-3); }
+  .modal-body { padding: 18px 20px; }
+
+  .room-code-display {
+    text-align: center;
+    padding: 18px;
+    background: var(--bg);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  .room-code-display .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--ink-low);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .room-code-display .code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+  }
+
+  .invite-preview {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    margin-bottom: 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    user-select: text;
+  }
+
+  .share-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .share-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .share-btn:active {
+    transform: scale(0.97);
+    background: var(--bg-4);
+  }
+  .share-btn.kakao {
+    background: #FEE500;
+    color: #191919;
+    border-color: #FEE500;
+  }
+  .share-btn.copy {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .share-btn svg { display: block; }
+
+  .share-link-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .share-link-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--ink);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    user-select: all;
+  }
+  .share-link-row button {
+    padding: 0 14px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: 12px;
+  }
+
+  /* Backdrop */
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 15;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .backdrop.show { opacity: 1; pointer-events: auto; }
+
+  /* Subtitle picker */
+  .sub-menu {
+    position: absolute;
+    bottom: calc(110px + env(safe-area-inset-bottom));
+    right: 14px;
+    background: rgba(20,20,28,0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 25;
+    min-width: 180px;
+    display: none;
+  }
+  .sub-menu.show { display: block; }
+  .sub-menu-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sub-menu-item:active { background: var(--bg-3); }
+  .sub-menu-item.active { color: var(--accent); }
+  .sub-menu .sep {
+    height: 1px;
+    background: var(--line);
+    margin: 4px 0;
+  }
+
+  /* Volume mixer menu */
+  .volume-menu {
+    position: absolute;
+    bottom: calc(110px + env(safe-area-inset-bottom));
+    right: 14px;
+    background: rgba(20,20,28,0.96);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    z-index: 25;
+    width: min(300px, 80vw);
+    display: none;
+  }
+  .volume-menu.show { display: block; }
+  .volume-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .volume-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 60px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--bg-3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #fff;
+  }
+  .volume-value {
+    width: 32px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    flex-shrink: 0;
+  }
+  .volume-divider {
+    height: 1px;
+    background: var(--line);
+    margin: 8px 0;
+  }
+  .volume-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .volume-toggle input[type="checkbox"] {
+    display: none;
+  }
+  .volume-toggle .toggle-track {
+    width: 32px;
+    height: 18px;
+    border-radius: 9px;
+    background: var(--bg-3);
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .volume-toggle .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    background: var(--ink-low);
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .volume-toggle input[type="checkbox"]:checked ~ .toggle-track {
+    background: var(--accent);
+  }
+  .volume-toggle input[type="checkbox"]:checked ~ .toggle-track::after {
+    left: 16px;
+    background: #fff;
+  }
+  .volume-toggle .toggle-text {
+    flex: 1;
+  }
+  .volume-preset {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--ink-dim);
+    background: transparent;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+  }
+  .volume-preset:active,
+  .volume-preset:hover {
+    background: var(--bg-3);
+    color: var(--ink);
+  }
+
+  /* Floating chat toasts (overlay for fullscreen playback) */
+  .chat-toasts {
+    position: absolute;
+    bottom: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(90%, 600px);
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 30;
+    align-items: stretch;
+  }
+  .chat-toast {
+    background: rgba(10, 10, 15, 0.78);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.4;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    animation: chatToastIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    word-break: break-word;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    display: block;
+    align-self: center;
+    max-width: 100%;
+  }
+  .chat-toast.fading {
+    animation: chatToastOut 0.6s ease-out forwards;
+  }
+  /* Fullscreen mode: most recent toast is pinned and stays put.
+     Slightly stronger background so it stays readable over moving video. */
+  .chat-toast.pinned {
+    background: rgba(10, 10, 15, 0.88);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.55);
+  }
+  /* Unread pill in fullscreen — visible in a corner of the video so the
+     viewer notices new chat without exiting fullscreen. */
+  .fs-unread-pill {
+    position: absolute;
+    bottom: 14%;
+    right: 4%;
+    padding: 6px 12px;
+    background: var(--accent, #ff5722);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    z-index: 31;
+    pointer-events: auto;
+    cursor: pointer;
+    display: none;
+    animation: chatToastIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .fs-unread-pill.show { display: inline-block; }
+  /* Keep both overlays above everything in fullscreen */
+  .video-wrap:fullscreen .fs-unread-pill,
+  .video-wrap:-webkit-full-screen .fs-unread-pill {
+    z-index: 2147483647;
+  }
+  .chat-toast .toast-name {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    margin-right: 6px;
+  }
+  .chat-toast.system {
+    background: rgba(20, 20, 30, 0.6);
+    font-style: italic;
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+  }
+  @keyframes chatToastIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes chatToastOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-6px); }
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: grid;
+    place-items: center;
+    z-index: 50;
+  }
+
+  .empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--ink-low);
+  }
+  .empty .em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 18px;
+    margin-bottom: 6px;
+    color: var(--ink-dim);
+  }
+  .empty .sub { font-size: 13px; }
+
+  /* SVG icons inherit color */
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ============ LOBBY ============ -->
+<section id="lobby" class="screen active">
+  <div class="marquee">
+    <div class="label">Now Showing</div>
+    <h1>씨네 파티<em>cinema · together</em></h1>
+    <div class="sub">WEBDAV · WATCH · CHAT · TALK</div>
+  </div>
+
+  <!-- Resume host session (visible only when localStorage has a saved host session
+       matching either the URL hash code OR no hash, so the host can recover after
+       a Ctrl+Shift+R that left no other peers in the room) -->
+  <div class="panel" id="resume-panel" style="display:none;">
+    <div class="panel-head">
+      <span class="ticket">↩︎</span>
+      <h2>이전 방으로 복귀</h2>
+    </div>
+    <div class="panel-body">
+      <div style="margin-bottom: 14px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 13px; color: var(--ink-dim); line-height: 1.5;">
+        <div style="color: var(--ink); font-weight: 600; margin-bottom: 4px;" id="resume-movie-name">—</div>
+        <div>방 코드: <span id="resume-room-code" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+      </div>
+      <button id="btn-resume-host" class="btn btn-primary btn-block">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        🔁 호스트로 복귀
+      </button>
+      <button id="btn-resume-forget" class="btn btn-ghost" style="margin-top: 8px;">
+        🗑 잊어버리기 (저장된 자격증명 삭제)
+      </button>
+      <div id="resume-status" class="status-line" style="margin-top: 8px;"></div>
+    </div>
+  </div>
+
+  <!-- Role chooser -->
+  <div class="panel" id="role-panel">
+    <div class="panel-head">
+      <span class="ticket">01</span>
+      <h2>어떻게 시작할까요?</h2>
+    </div>
+    <div class="panel-body">
+      <button id="btn-role-host" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        호스트 (영화 고르고 방 만들기)
+      </button>
+      <div class="divider">OR</div>
+      <button id="btn-role-guest" class="btn btn-ghost">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-3-3M19 11l3-3"/></svg>
+        게스트 (방 코드로 참여)
+      </button>
+      <div style="margin-top: 14px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 12px; color: var(--ink-dim); line-height: 1.5;">
+        💡 <b>호스트</b>는 WebDAV 정보가 필요해요.<br>
+        <b>게스트</b>는 방 코드만 있으면 돼요.
+      </div>
+    </div>
+  </div>
+
+  <!-- Host: WebDAV connect form -->
+  <div class="panel" id="host-panel" style="display:none;">
+    <div class="panel-head">
+      <span class="ticket">01</span>
+      <h2>WebDAV 서버 연결 (호스트)</h2>
+      <button class="icon-btn" id="btn-back-role" style="margin-left:auto; width:30px; height:30px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <label>서버 URL</label>
+        <div class="input-with-clear">
+          <input id="dav-url" type="url" inputmode="url" list="dav-url-list" placeholder="https://your-proxy.workers.dev/path/to/Movies" autocomplete="off">
+          <button type="button" class="input-clear" id="dav-url-clear" tabindex="-1" title="저장된 URL 모두 삭제" aria-label="저장된 URL 모두 삭제">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>
+          </button>
+        </div>
+        <datalist id="dav-url-list"></datalist>
+        <div class="hint" id="dav-url-hint" style="display:none;"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>아이디</label>
+          <input id="dav-user" type="text" list="dav-user-list" autocomplete="off" placeholder="아이디 또는 이메일">
+          <datalist id="dav-user-list"></datalist>
+        </div>
+        <div class="field">
+          <label>비밀번호</label>
+          <input id="dav-pass" type="password" autocomplete="off" placeholder="••••••••">
+        </div>
+      </div>
+      <div class="field">
+        <label>닉네임</label>
+        <input id="my-name" type="text" autocomplete="off" placeholder="예: 재이" maxlength="20">
+      </div>
+      <label class="checkbox-row" for="host-relay-mode" style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;color:var(--ink-dim);cursor:pointer;">
+        <input type="checkbox" id="host-relay-mode" style="margin:0;">
+        <span>VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)</span>
+      </label>
+      <button id="btn-connect" class="btn btn-primary btn-block">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        연결하고 영화 고르기
+      </button>
+    </div>
+    <div id="lobby-status" class="status-line"></div>
+  </div>
+
+  <!-- Guest: just room code + nickname -->
+  <div class="panel" id="guest-panel" style="display:none;">
+    <div class="panel-head">
+      <span class="ticket">01</span>
+      <h2>방 참여 (게스트)</h2>
+      <button class="icon-btn" id="btn-back-role-2" style="margin-left:auto; width:30px; height:30px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <label>방 코드</label>
+        <input id="guest-code" type="text" inputmode="text" autocapitalize="characters" placeholder="ABC-123" maxlength="10" style="text-transform: uppercase; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.15em; font-size: 22px; text-align: center;">
+      </div>
+      <div class="field">
+        <label>닉네임</label>
+        <input id="guest-name" type="text" autocomplete="off" placeholder="예: 친구" maxlength="20">
+      </div>
+      <label class="checkbox-row" for="guest-relay-mode" style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;color:var(--ink-dim);cursor:pointer;">
+        <input type="checkbox" id="guest-relay-mode" style="margin:0;">
+        <span>VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)</span>
+      </label>
+      <button id="btn-guest-join" class="btn btn-primary btn-block">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-3-3M19 11l3-3"/></svg>
+        파티 참여
+      </button>
+    </div>
+    <div id="guest-status" class="status-line"></div>
+  </div>
+
+  <div style="text-align:center; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-low); letter-spacing: 0.2em;">
+    P2P · END-TO-END · NO SERVER
+  </div>
+</section>
+
+<!-- ============ FILE BROWSER ============ -->
+<section id="browser" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" id="btn-back-lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="title">동영상 선택</div>
+    <button class="icon-btn" id="btn-refresh">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+    </button>
+  </div>
+  <div class="crumbs" id="crumbs">/</div>
+  <div class="file-list" id="file-list"></div>
+</section>
+
+<!-- ============ ROOM SETUP ============ -->
+<section id="room-setup" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" id="btn-back-browser">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="title">파티 만들기</div>
+  </div>
+
+  <div class="marquee" style="padding: 28px 24px 18px;">
+    <div class="label">Selected Feature</div>
+    <h1 style="font-size: 22px; line-height: 1.2;" id="selected-title">—</h1>
+    <div class="sub" id="selected-sub">—</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="ticket">02</span>
+      <h2>방 만들기</h2>
+    </div>
+    <div class="panel-body">
+      <button id="btn-create-room" class="btn btn-primary btn-block">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        방 만들고 친구 초대
+      </button>
+    </div>
+    <div id="room-status" class="status-line"></div>
+  </div>
+
+  <div style="padding: 0 24px 24px; color: var(--ink-low); font-size: 12px; line-height: 1.6;">
+    💡 방이 만들어지면 방 코드가 표시됩니다.<br>
+    그 코드를 친구에게 공유하세요. 친구는 게스트로 참여하면 자동으로 같은 영화가 재생됩니다.
+  </div>
+</section>
+
+<!-- ============ THEATER ============ -->
+<section id="theater" class="screen">
+  <div class="theater-top" id="theater-top">
+    <div class="room-badge">
+      <div class="pulse-dot"></div>
+      <div class="room-code" id="room-code-disp">—</div>
+      <div class="peer-count" id="peer-count">1명</div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-mic" title="마이크">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-people">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="badge" id="unread-badge" style="display:none;">0</span>
+      </button>
+      <button class="icon-btn" id="btn-leave">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="video-wrap">
+    <video id="player" playsinline crossorigin="anonymous"></video>
+    <div class="loading-overlay" id="video-loading" style="display:none;">
+      <div class="spinner"></div>
+    </div>
+    <!-- Floating chat toasts (visible during playback and fullscreen) -->
+    <div class="chat-toasts" id="chat-toasts"></div>
+    <!-- Unread chat pill, only shown in fullscreen when there are unseen msgs -->
+    <button class="fs-unread-pill" id="fs-unread-pill" type="button" aria-label="새 메시지">💬 <span id="fs-unread-pill-count">0</span></button>
+  </div>
+
+  <div class="controls" id="controls">
+    <div class="progress-track" id="progress-track">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-thumb" id="progress-thumb"></div>
+    </div>
+    <div class="control-row">
+      <button class="play-btn" id="btn-play">
+        <svg id="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="icon-pause" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+      </button>
+      <span class="time-text" id="time-text">00:00 / 00:00</span>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="btn-volume" title="볼륨 조절">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-subs" title="자막">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M13 15h4M7 11h2M11 11h6"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-fullscreen" title="전체화면">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Subtitle menu -->
+  <div class="sub-menu" id="sub-menu">
+    <div class="sub-menu-item" id="sub-off">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
+      자막 끄기
+    </div>
+    <div class="sep"></div>
+    <label class="sub-menu-item" for="sub-file" style="cursor:pointer;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/></svg>
+      자막 파일 추가 (.srt/.vtt)
+    </label>
+    <input id="sub-file" type="file" accept=".srt,.vtt" style="display:none;">
+    <div id="sub-list"></div>
+  </div>
+
+  <!-- Volume mixer menu -->
+  <div class="volume-menu" id="volume-menu">
+    <div class="volume-row">
+      <div class="volume-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        <span>영화</span>
+      </div>
+      <input type="range" id="vol-movie" min="0" max="100" value="100" class="volume-slider">
+      <div class="volume-value" id="vol-movie-val">100</div>
+    </div>
+    <div class="volume-row">
+      <div class="volume-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+        <span>친구</span>
+      </div>
+      <input type="range" id="vol-voice" min="0" max="100" value="100" class="volume-slider">
+      <div class="volume-value" id="vol-voice-val">100</div>
+    </div>
+    <div class="volume-divider"></div>
+    <label class="volume-toggle" for="toggle-vad">
+      <input type="checkbox" id="toggle-vad" checked>
+      <span class="toggle-track"></span>
+      <span class="toggle-text">
+        🎙️ 자동 마이크 (말할 때만)
+      </span>
+    </label>
+    <label class="volume-toggle" for="toggle-ducking">
+      <input type="checkbox" id="toggle-ducking" checked>
+      <span class="toggle-track"></span>
+      <span class="toggle-text">
+        🔉 대화 시 영화 볼륨 자동 감소
+      </span>
+    </label>
+    <label class="volume-toggle" for="toggle-noise-suppress">
+      <input type="checkbox" id="toggle-noise-suppress" checked>
+      <span class="toggle-track"></span>
+      <span class="toggle-text">
+        🧹 마이크 노이즈 억제 (하이패스 + 컴프레서)
+      </span>
+    </label>
+    <div class="volume-divider"></div>
+    <button class="volume-preset" id="vol-preset-balance">
+      🎬 영화 우선 (영화 100% / 친구 50%)
+    </button>
+    <button class="volume-preset" id="vol-preset-voice">
+      💬 대화 우선 (영화 30% / 친구 100%)
+    </button>
+    <button class="volume-preset" id="vol-preset-equal">
+      ⚖️ 동일 (둘 다 100%)
+    </button>
+  </div>
+
+  <!-- Side panel -->
+  <div class="backdrop" id="backdrop"></div>
+  <aside class="side-panel" id="side-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="chat">채팅<span class="count" id="tab-msg-count" style="display:none;">0</span></button>
+      <button class="panel-tab" data-tab="people">참여자<span class="count" id="tab-ppl-count">1</span></button>
+    </div>
+    <div class="panel-content active" data-tab="chat">
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" placeholder="메시지 입력..." maxlength="500">
+        <button id="btn-send-chat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="panel-content" data-tab="people">
+      <div class="participants" id="participants"></div>
+    </div>
+  </aside>
+</section>
+
+<!-- Audio elements for voice chat (hidden) -->
+<div id="audio-container" style="display:none;"></div>
+
+<!-- Share invite modal -->
+<div class="modal-backdrop" id="share-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="ticket">초대장</span>
+      <h2>친구 초대하기</h2>
+      <button class="close-btn" id="btn-close-share">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="room-code-display">
+        <div class="label">Room Code</div>
+        <div class="code" id="modal-room-code">—</div>
+      </div>
+
+      <div class="share-link-row">
+        <input id="share-link-input" type="text" readonly>
+        <button id="btn-copy-link">복사</button>
+      </div>
+
+      <div class="invite-preview" id="invite-preview">—</div>
+
+      <div class="share-btns">
+        <button class="share-btn copy" id="btn-share-message">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>메시지 복사</span>
+        </button>
+        <button class="share-btn" id="btn-native-share">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          <span>다른 앱으로 공유</span>
+        </button>
+      </div>
+
+      <div style="text-align:center; padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em;">
+        💡 친구가 링크를 누르면 자동으로 입장
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================
+   STATE
+===================================================== */
+const state = {
+  dav: { origin: '', basePath: '', user: '', pass: '' },
+  myName: '',
+  myId: null,
+  currentPath: '/',
+  pathStack: ['/'],
+  selectedFile: null,
+  roomCode: null,
+  isHost: false,
+  hostId: null,               // current host peerId (for everyone, including host themselves)
+  myJoinTime: null,           // when I joined the room (for tie-breaking)
+  knownPeers: new Map(),      // peerId -> { joinTime, name } — for promotion algorithm
+  hostBackup: null,           // { file, dav } — guests keep a backup for promotion
+  hostLastSeen: 0,            // timestamp of last message from host
+  hostHeartbeatInterval: null,
+  hostWatchdogInterval: null,
+  promotionInProgress: false,
+  peer: null,                 // PeerJS instance
+  connections: new Map(),     // peerId -> DataConnection
+  calls: new Map(),           // peerId -> MediaConnection
+  participants: new Map(),    // peerId -> { name, color, micOn }
+  micStream: null,
+  micOn: false,
+  videoUrl: null,
+  videoBlobUrl: null,
+  unreadCount: 0,
+  panelOpen: false,
+  ignoreNextSync: false,         // legacy, unused — kept for compat
+  syncSuppressionDepth: 0,
+  lastSyncTime: 0,
+  swReady: false,
+  swRegistration: null,
+};
+
+const VIDEO_EXT = ['mp4', 'mkv', 'webm', 'mov', 'm4v', 'avi', 'ts', 'm3u8'];
+
+/* =====================================================
+   UTILS
+===================================================== */
+function $(id) { return document.getElementById(id); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function toast(msg, dur = 2200) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), dur);
+}
+function setStatus(elId, msg, type = '') {
+  const el = $(elId);
+  el.className = 'status-line show ' + type;
+  el.textContent = msg;
+}
+function clearStatus(elId) {
+  $(elId).className = 'status-line';
+}
+function fmtTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+function fmtSize(bytes) {
+  if (!bytes) return '';
+  const u = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  while (bytes > 1024 && i < u.length - 1) { bytes /= 1024; i++; }
+  return bytes.toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+}
+function colorFromString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i);
+  const hue = Math.abs(h) % 360;
+  return `hsl(${hue}, 65%, 55%)`;
+}
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s.slice(0, 3) + '-' + s.slice(3);
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* =====================================================
+   WEBDAV CLIENT
+   - state.dav.origin: server origin only (e.g. https://your-proxy.workers.dev)
+   - state.dav.basePath: WebDAV base path (e.g. /dav/Movies or /remote.php/webdav)
+   - state.currentPath: current path under basePath (e.g. /SubFolder/)
+   - All paths in app are relative to basePath; we only prepend basePath when building URLs
+===================================================== */
+function buildDavUrl(pathOrUrl) {
+  // Normalize input to a path-only (relative to origin) string,
+  // then prepend origin. Accepts:
+  //   - full URL: https://your-proxy.workers.dev/path/...
+  //   - absolute path: /dav/...
+  //   - relative path: foo/bar  (relative to basePath)
+  let fullPath;
+
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    // Full URL — extract pathname only (will use our origin)
+    try {
+      fullPath = new URL(pathOrUrl).pathname;
+    } catch {
+      fullPath = pathOrUrl;
+    }
+  } else if (pathOrUrl.startsWith('/')) {
+    // Absolute path — use as-is
+    fullPath = pathOrUrl;
+  } else {
+    // Relative path — prepend basePath
+    fullPath = (state.dav.basePath || '') + '/' + pathOrUrl;
+  }
+
+  // Encode path components but keep slashes
+  // Decode first in case path is already partially encoded, then re-encode
+  // to avoid double-encoding
+  const decoded = (() => {
+    try { return decodeURIComponent(fullPath); } catch { return fullPath; }
+  })();
+  const encodedPath = decoded.split('/').map(encodeURIComponent).join('/');
+
+  // DAV origin/path logging removed — visible to anyone with DevTools open.
+  return state.dav.origin + encodedPath;
+}
+
+async function davRequest(method, path, body, extraHeaders = {}) {
+  const url = buildDavUrl(path);
+  const headers = {
+    'Authorization': 'Basic ' + btoa(state.dav.user + ':' + state.dav.pass),
+    ...extraHeaders
+  };
+  const res = await fetch(url, { method, headers, body });
+  if (!res.ok && res.status !== 207) {
+    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  }
+  return res;
+}
+
+async function davList(path) {
+  const body = `<?xml version="1.0"?>
+<d:propfind xmlns:d="DAV:">
+  <d:prop>
+    <d:resourcetype/>
+    <d:getcontentlength/>
+    <d:getlastmodified/>
+    <d:displayname/>
+  </d:prop>
+</d:propfind>`;
+  const res = await davRequest('PROPFIND', path, body, {
+    'Depth': '1',
+    'Content-Type': 'application/xml'
+  });
+  const text = await res.text();
+  const xml = new DOMParser().parseFromString(text, 'application/xml');
+  const responses = xml.getElementsByTagNameNS('DAV:', 'response');
+  const items = [];
+
+  // Path of the current directory we listed (under basePath)
+  const currentFullPath = path.startsWith(state.dav.basePath)
+    ? path
+    : state.dav.basePath + (path.startsWith('/') ? path : '/' + path);
+
+  for (const r of responses) {
+    const hrefRaw = r.getElementsByTagNameNS('DAV:', 'href')[0]?.textContent;
+    if (!hrefRaw) continue;
+
+    // href can be absolute URL or path-only; normalize to path-only
+    let hrefPath;
+    try {
+      hrefPath = decodeURIComponent(new URL(hrefRaw, state.dav.origin).pathname);
+    } catch {
+      hrefPath = decodeURIComponent(hrefRaw);
+    }
+
+    // Skip the directory itself
+    if (hrefPath.replace(/\/$/, '') === currentFullPath.replace(/\/$/, '')) continue;
+
+    const isDir = r.getElementsByTagNameNS('DAV:', 'collection').length > 0;
+    const size = parseInt(r.getElementsByTagNameNS('DAV:', 'getcontentlength')[0]?.textContent || '0', 10);
+    const lastMod = r.getElementsByTagNameNS('DAV:', 'getlastmodified')[0]?.textContent || '';
+    const segments = hrefPath.replace(/\/$/, '').split('/').filter(Boolean);
+    const name = segments[segments.length - 1] || '';
+
+    items.push({
+      name,
+      path: hrefPath,           // absolute path from server root, e.g. /dav/Movies/x.mp4
+      isDir,
+      size,
+      lastMod,
+      ext: name.includes('.') ? name.split('.').pop().toLowerCase() : ''
+    });
+  }
+  items.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  return items;
+}
+
+/* =====================================================
+   LOBBY
+===================================================== */
+
+// Role selection
+$('btn-role-host').addEventListener('click', () => {
+  $('role-panel').style.display = 'none';
+  $('host-panel').style.display = 'block';
+  $('guest-panel').style.display = 'none';
+});
+$('btn-role-guest').addEventListener('click', () => {
+  $('role-panel').style.display = 'none';
+  $('host-panel').style.display = 'none';
+  $('guest-panel').style.display = 'block';
+});
+function backToRoleChoice() {
+  $('role-panel').style.display = 'block';
+  $('host-panel').style.display = 'none';
+  $('guest-panel').style.display = 'none';
+  clearStatus('lobby-status');
+  clearStatus('guest-status');
+}
+$('btn-back-role').addEventListener('click', backToRoleChoice);
+$('btn-back-role-2').addEventListener('click', backToRoleChoice);
+
+// Guest join handler
+$('btn-guest-join').addEventListener('click', async () => {
+  const code = $('guest-code').value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  const name = $('guest-name').value.trim();
+
+  if (!code || code.length < 5) {
+    setStatus('guest-status', '올바른 방 코드를 입력해주세요.', 'error');
+    return;
+  }
+  if (!name) {
+    setStatus('guest-status', '닉네임을 입력해주세요.', 'error');
+    return;
+  }
+
+  state.myName = name;
+  state.isHost = false;
+  state.roomCode = code;
+
+  try {
+    localStorage.setItem('cineparty.name', name);
+  } catch(e) {}
+
+  setStatus('guest-status', '방에 참여하는 중...');
+  $('btn-guest-join').disabled = true;
+
+  try {
+    await initPeer(false);
+  } catch (err) {
+    setStatus('guest-status', '참여 실패: ' + err.message, 'error');
+    $('btn-guest-join').disabled = false;
+  }
+});
+
+// Enter key triggers guest join
+['guest-code', 'guest-name'].forEach(id => {
+  $(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('btn-guest-join').click();
+    }
+  });
+});
+
+// Pre-fill saved nickname for guest too
+try {
+  const savedName = localStorage.getItem('cineparty.name');
+  if (savedName) $('guest-name').value = savedName;
+} catch(e) {}
+
+/* =====================================================
+   RESUME HOST SESSION
+   When a host hard-reloads alone (no other peers to promote), the room is
+   normally lost — the deterministic peer ID stays parked on PeerJS Cloud
+   for ~60s, the share link auto-joins as guest and waits forever.
+   We persist the host's room code + WebDAV creds + selected file to
+   localStorage at theater entry, then offer a "Resume Host" path that
+   reclaims the same deterministic ID (with retry, since PeerJS holds the
+   stale registration for up to a minute).
+
+   SECURITY NOTE: this stores the WebDAV password in localStorage in plain
+   text for up to RESUME_TTL_MS. Same threat model as in-memory session +
+   "I trust this device". User can wipe via 잊어버리기 or btn-leave.
+===================================================== */
+const RESUME_TTL_MS = 6 * 3600 * 1000; // 6 hours
+const RESUME_KEY = 'cineparty.activeHostSession';
+const RESUME_CLAIM_TIMEOUT_MS = 90000; // total time to keep retrying ID claim
+
+function saveHostSession() {
+  if (!state.isHost || !state.roomCode || !state.selectedFile || !state.dav?.origin) return;
+  try {
+    localStorage.setItem(RESUME_KEY, JSON.stringify({
+      roomCode: state.roomCode,
+      dav: state.dav,
+      selectedFile: state.selectedFile,
+      myName: state.myName,
+      savedAt: Date.now()
+    }));
+    console.log('[resume] host session saved for room', state.roomCode);
+  } catch(e) {}
+}
+
+function clearHostSession() {
+  try { localStorage.removeItem(RESUME_KEY); } catch(e) {}
+}
+
+function getResumableHostSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null');
+    if (!saved || !saved.roomCode || !saved.dav || !saved.selectedFile) return null;
+    if (Date.now() - (saved.savedAt || 0) > RESUME_TTL_MS) {
+      clearHostSession();
+      return null;
+    }
+    return saved;
+  } catch(e) { return null; }
+}
+
+function showResumePanel(saved) {
+  $('resume-movie-name').textContent = saved.selectedFile.name || '—';
+  $('resume-room-code').textContent = saved.roomCode;
+  $('resume-panel').style.display = '';
+}
+
+async function resumeAsHost(saved) {
+  // Restore state from the saved session and reclaim the deterministic peer ID.
+  state.dav = saved.dav;
+  state.selectedFile = saved.selectedFile;
+  state.myName = saved.myName || '호스트';
+  state.roomCode = saved.roomCode;
+  state.isHost = true;
+  // Flag for setupConnection's conn.on('open') — when an existing guest
+  // reconnects after our resume, ask them where they are in the movie so
+  // we don't broadcast a "we're at 0" heartbeat and yank everyone backward.
+  // Window must be longer than (PeerJS-claim-retry) + (guest-reconnect-loop)
+  // — otherwise the flag expires before the guest reconnects. 45s covers
+  // the worst case: ~15s for PeerJS to release, ~30s for guest reconnect.
+  state.isResumingHost = true;
+  state.resumingTimeAccepted = false;
+  if (state.resumingHostTimeout) clearTimeout(state.resumingHostTimeout);
+  state.resumingHostTimeout = setTimeout(() => {
+    state.isResumingHost = false;
+    state.resumingHostTimeout = null;
+  }, 45000);
+
+  $('btn-resume-host').disabled = true;
+  $('btn-resume-forget').disabled = true;
+  setStatus('resume-status', '복귀 중...');
+
+  const startedAt = Date.now();
+
+  const tryClaim = async () => {
+    if (state.peer) {
+      try { state.peer.destroy(); } catch (e) {}
+      state.peer = null;
+    }
+    const elapsed = Date.now() - startedAt;
+    setStatus('resume-status',
+      elapsed < 4000
+        ? '복귀 중...'
+        : `이전 세션 정리 중... (${Math.floor(elapsed / 1000)}s / ${Math.floor(RESUME_CLAIM_TIMEOUT_MS / 1000)}s)`);
+
+    // The retry hook is read by initPeer's error handler — see peer.on('error')
+    state.resumeRetry = {
+      onUnavailableId: () => {
+        if (Date.now() - startedAt > RESUME_CLAIM_TIMEOUT_MS) {
+          state.resumeRetry = null;
+          setStatus('resume-status', '복귀 실패: 이전 세션이 너무 오래 점유 중입니다. 새 방을 만들어주세요.', 'error');
+          $('btn-resume-host').disabled = false;
+          $('btn-resume-forget').disabled = false;
+          return;
+        }
+        setTimeout(tryClaim, 5000);
+      },
+      onSuccess: () => { state.resumeRetry = null; }
+    };
+    try {
+      await initPeer(true);
+    } catch (e) {
+      // Errors typically surface via state.peer.on('error'); nothing to do here.
+    }
+  };
+  tryClaim();
+}
+
+$('btn-resume-host').addEventListener('click', () => {
+  const saved = getResumableHostSession();
+  if (saved) resumeAsHost(saved);
+});
+$('btn-resume-forget').addEventListener('click', () => {
+  clearHostSession();
+  $('resume-panel').style.display = 'none';
+});
+
+// On lobby load, surface the resume panel if we have a saved session.
+(function initResume() {
+  const saved = getResumableHostSession();
+  if (saved) {
+    console.log('[resume] saved session found:', { roomCode: saved.roomCode, file: saved.selectedFile?.name, savedAt: new Date(saved.savedAt).toLocaleString() });
+    showResumePanel(saved);
+  } else {
+    const raw = localStorage.getItem(RESUME_KEY);
+    console.log('[resume] no saved session.', raw ? 'raw value present but invalid/expired:' : 'localStorage key absent.', raw ? raw.slice(0, 80) + '...' : '');
+  }
+})();
+
+// Host: WebDAV connect handler
+$('btn-connect').addEventListener('click', async () => {
+  const url = $('dav-url').value.trim();
+  const user = $('dav-user').value.trim();
+  const pass = $('dav-pass').value;
+  const name = $('my-name').value.trim();
+
+  if (!url || !name) {
+    setStatus('lobby-status', '서버 URL과 닉네임을 입력해주세요.', 'error');
+    return;
+  }
+
+  // Parse URL into origin + basePath
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    setStatus('lobby-status', '올바른 URL 형식이 아닙니다.', 'error');
+    return;
+  }
+  const origin = parsed.origin;
+  // Remove trailing slash from base path; if empty, use empty string
+  let basePath = parsed.pathname.replace(/\/+$/, '');
+  // If user typed only the origin (e.g. https://your-proxy.workers.dev), basePath is empty — that's fine
+
+  state.dav = { origin, basePath, user, pass };
+  state.myName = name;
+
+  console.log('[connect] parsed URL:', { origin, basePath, user });
+
+  // Save (without password)
+  try {
+    localStorage.setItem('cineparty.dav', JSON.stringify({ url, user }));
+    localStorage.setItem('cineparty.name', name);
+  } catch(e) {}
+
+  setStatus('lobby-status', '연결 중...');
+  $('btn-connect').disabled = true;
+
+  try {
+    // Start at the root of basePath
+    state.currentPath = basePath + '/';
+    state.pathStack = [state.currentPath];
+    await loadDirectory(state.currentPath);
+    clearStatus('lobby-status');
+    showScreen('browser');
+  } catch (err) {
+    setStatus('lobby-status', '연결 실패: ' + err.message, 'error');
+  } finally {
+    $('btn-connect').disabled = false;
+  }
+});
+
+// Restore saved
+try {
+  const savedDav = JSON.parse(localStorage.getItem('cineparty.dav') || '{}');
+  if (savedDav.url) $('dav-url').value = savedDav.url;
+  if (savedDav.user) $('dav-user').value = savedDav.user;
+  const savedName = localStorage.getItem('cineparty.name');
+  if (savedName) $('my-name').value = savedName;
+} catch(e) {}
+
+// Clear saved server URL + username (the trash icon next to the URL field).
+$('dav-url-clear').addEventListener('click', () => {
+  try { localStorage.removeItem('cineparty.dav'); } catch(e) {}
+  $('dav-url').value = '';
+  $('dav-user').value = '';
+  $('dav-url').focus();
+});
+
+// Enter key triggers host connect
+['dav-url', 'dav-user', 'dav-pass', 'my-name'].forEach(id => {
+  $(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('btn-connect').click();
+    }
+  });
+});
+
+/* =====================================================
+   FILE BROWSER
+===================================================== */
+async function loadDirectory(path) {
+  const list = $('file-list');
+  list.innerHTML = '<div class="empty"><div class="spinner" style="margin: 0 auto 14px;"></div><div>불러오는 중...</div></div>';
+
+  try {
+    const items = await davList(path);
+    state.currentPath = path;
+    renderFileList(items);
+    renderCrumbs(path);
+  } catch (err) {
+    list.innerHTML = `<div class="empty"><div class="em">불러올 수 없습니다</div><div class="sub">${escapeHtml(err.message)}</div></div>`;
+  }
+}
+
+function renderCrumbs(path) {
+  let display = path;
+  if (state.dav.basePath && display.startsWith(state.dav.basePath)) {
+    display = display.slice(state.dav.basePath.length) || '/';
+  }
+  if (!display) display = '/';
+  $('crumbs').textContent = display;
+}
+
+function renderFileList(items) {
+  const list = $('file-list');
+  list.innerHTML = '';
+
+  // Parent directory
+  if (state.pathStack.length > 1) {
+    const up = document.createElement('div');
+    up.className = 'file-item';
+    up.innerHTML = `
+      <div class="file-icon folder">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </div>
+      <div class="file-meta">
+        <div class="file-name">상위 폴더</div>
+        <div class="file-sub">..</div>
+      </div>
+    `;
+    up.addEventListener('click', () => {
+      state.pathStack.pop();
+      loadDirectory(state.pathStack[state.pathStack.length - 1]);
+    });
+    list.appendChild(up);
+  }
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = '<div class="em">비어있습니다</div><div class="sub">이 폴더에는 파일이 없습니다.</div>';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const item of items) {
+    const isVideo = item.ext && VIDEO_EXT.includes(item.ext);
+    const el = document.createElement('div');
+    el.className = 'file-item';
+
+    const iconSvg = item.isDir
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+      : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>';
+
+    el.innerHTML = `
+      <div class="file-icon ${item.isDir ? 'folder' : (isVideo ? 'video' : '')}">${iconSvg}</div>
+      <div class="file-meta">
+        <div class="file-name">${escapeHtml(item.name)}</div>
+        <div class="file-sub">${item.isDir ? '폴더' : (item.ext ? item.ext.toUpperCase() + ' · ' : '') + fmtSize(item.size)}</div>
+      </div>
+    `;
+
+    if (!item.isDir && !isVideo) {
+      el.style.opacity = '0.4';
+      el.style.pointerEvents = 'none';
+    }
+
+    el.addEventListener('click', () => {
+      if (item.isDir) {
+        state.pathStack.push(item.path);
+        loadDirectory(item.path);
+      } else if (isVideo) {
+        selectVideo(item);
+      }
+    });
+    list.appendChild(el);
+  }
+}
+
+function selectVideo(item) {
+  state.selectedFile = item;
+  $('selected-title').textContent = item.name;
+  $('selected-sub').textContent = (item.ext.toUpperCase()) + ' · ' + fmtSize(item.size);
+
+  // Codec compatibility warning
+  const lowerName = item.name.toLowerCase();
+  let warning = null;
+  if (/(\.|_)x265|hevc|h\.?265/i.test(item.name)) {
+    warning = '⚠️ HEVC/H.265 코덱은 Chrome/Edge에서 재생 안 될 수 있어요.\n\nSafari는 가능합니다. 또는 H.264(x264)로 인코딩된 파일을 추천드려요.\n\n그래도 진행할까요?';
+  } else if (item.ext === 'avi' || item.ext === 'wmv' || item.ext === 'flv') {
+    warning = `⚠️ ${item.ext.toUpperCase()} 형식은 브라우저에서 재생 안 될 가능성이 높아요.\n\nmp4(H.264) 또는 webm을 추천드려요.\n\n그래도 진행할까요?`;
+  }
+
+  if (warning) {
+    if (!confirm(warning)) {
+      state.selectedFile = null;
+      return;
+    }
+  }
+
+  showScreen('room-setup');
+}
+
+$('btn-back-lobby').addEventListener('click', () => showScreen('lobby'));
+$('btn-refresh').addEventListener('click', () => loadDirectory(state.currentPath));
+$('btn-back-browser').addEventListener('click', () => showScreen('browser'));
+
+/* =====================================================
+   ROOM (PeerJS based)
+===================================================== */
+$('btn-create-room').addEventListener('click', async () => {
+  state.isHost = true;
+  state.roomCode = genRoomCode();
+  await initPeer(true);
+});
+
+async function initPeer(isHost) {
+  // Status target depends on which screen is showing
+  const statusEl = isHost ? 'room-status' : 'guest-status';
+  setStatus(statusEl, isHost ? '방을 만드는 중...' : '방에 참여하는 중...');
+  if (isHost) $('btn-create-room').disabled = true;
+
+  // Use room code as deterministic peer ID for host;
+  // joiners use random IDs and connect to host's ID
+  const hostPeerId = 'cineparty-' + state.roomCode.replace(/-/g, '');
+  const myPeerId = isHost ? hostPeerId : 'cineparty-' + state.roomCode.replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 8);
+
+  // Check if user requested relay-only mode (for VPN/strict NAT environments)
+  const relayCheckbox = isHost ? $('host-relay-mode') : $('guest-relay-mode');
+  const useRelayOnly = relayCheckbox && relayCheckbox.checked;
+  // Also auto-enable relay if previous attempt failed (saved in sessionStorage)
+  const autoRelay = sessionStorage.getItem('cineparty.autoRelay') === 'true';
+  const forceRelay = useRelayOnly || autoRelay;
+
+  if (forceRelay) {
+    console.log('[peer] using relay-only mode (TURN forced)');
+  }
+
+  state.peer = new Peer(myPeerId, {
+    debug: 1,
+    config: {
+      iceServers: [
+        // Public STUN servers (free, fast, but won't work behind symmetric NAT / strict firewalls)
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' },
+        // Public TURN servers (Open Relay, free) — used as fallback when STUN fails
+        // These are publicly known credentials so safe to embed
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      iceCandidatePoolSize: 10,
+      // When relay is forced, only use TURN (no direct P2P attempt). Critical for VPN/strict NAT.
+      ...(forceRelay ? { iceTransportPolicy: 'relay' } : {})
+    }
+  });
+
+  state.peer.on('open', async (id) => {
+    state.myId = id;
+    if (!state.myJoinTime) state.myJoinTime = Date.now();
+    // Resume flow succeeded — the deterministic ID is ours again
+    if (state.resumeRetry) state.resumeRetry.onSuccess();
+    setStatus(statusEl, '연결 성공!', 'success');
+    state.participants.set(id, {
+      name: state.myName,
+      color: colorFromString(state.myName),
+      micOn: false,
+      speaking: false
+    });
+    state.knownPeers.set(id, { joinTime: state.myJoinTime, name: state.myName });
+
+    if (isHost) {
+      state.hostId = id;
+      startHostHeartbeat();
+    } else {
+      // Connect to host (only on first open, not on reconnect)
+      if (!state.hasEnteredTheater) {
+        const conn = state.peer.connect(hostPeerId, { reliable: true });
+        setupConnection(conn);
+        state.hostId = hostPeerId;
+        state.hostLastSeen = Date.now();
+        startHostWatchdog();
+        // Watchdog: if the data channel to the host doesn't open within 12s,
+        // surface the retry UI. Otherwise the user sits on "기다리는 중..."
+        // forever because state.connections stays empty (the retry loop
+        // iterates that map and would send to zero peers).
+        state.guestHostConnTimeout = setTimeout(() => {
+          state.guestHostConnTimeout = null;
+          if (!state.connections.has(hostPeerId)) {
+            console.warn('[guest] data channel to host did not open within 12s');
+            showRetryButton();
+          }
+        }, 12000);
+      }
+    }
+
+    // GUARD: only enter theater once. Subsequent 'open' events (e.g. from reconnect)
+    // should NOT trigger enterTheater again — that would reload the video.
+    if (state.hasEnteredTheater) {
+      console.log('[peer.open] re-fired (reconnect?) — skipping enterTheater');
+      return;
+    }
+    state.hasEnteredTheater = true;
+
+    setTimeout(() => {
+      enterTheater();
+    }, 600);
+  });
+
+  state.peer.on('connection', (conn) => {
+    setupConnection(conn);
+  });
+
+  state.peer.on('call', (call) => {
+    if (state.micStream) {
+      call.answer(state.micStream);
+    } else {
+      call.answer();
+    }
+    setupCall(call);
+  });
+
+  state.peer.on('error', (err) => {
+    console.error('Peer error:', err);
+    // Resume-host flow: don't surface unavailable-id as a user error — the
+    // stale PeerJS registration takes up to ~60s to clear. Hand back to
+    // resumeAsHost's retry loop instead.
+    if (err.type === 'unavailable-id' && state.resumeRetry) {
+      console.log('[resume] deterministic ID still parked; will retry');
+      state.resumeRetry.onUnavailableId();
+      return;
+    }
+    let msg;
+    if (err.type === 'unavailable-id') {
+      msg = '이미 사용 중인 방 코드입니다. 다시 시도해주세요.';
+    } else if (err.type === 'peer-unavailable') {
+      msg = '방을 찾을 수 없습니다. 코드를 확인해주세요.';
+    } else {
+      msg = '연결 오류: ' + err.type;
+    }
+    setStatus(statusEl, msg, 'error');
+    if (isHost) $('btn-create-room').disabled = false;
+    else $('btn-guest-join').disabled = false;
+  });
+
+  state.peer.on('disconnected', () => {
+    toast('연결이 끊어졌습니다. 재연결 시도 중...');
+    state.peer.reconnect();
+  });
+}
+
+function setupConnection(conn) {
+  conn.on('open', () => {
+    state.connections.set(conn.peer, conn);
+
+    // Cancel the guest's host-conn watchdog if this is the connection we
+    // were waiting for.
+    if (state.guestHostConnTimeout && conn.peer === state.hostId) {
+      clearTimeout(state.guestHostConnTimeout);
+      state.guestHostConnTimeout = null;
+    }
+
+    // Send hello with joinTime for promotion algorithm
+    conn.send({
+      type: 'hello',
+      name: state.myName,
+      micOn: state.micOn,
+      joinTime: state.myJoinTime || Date.now()
+    });
+
+    // If host, also send participant list AND movie info + credentials to new joiner
+    if (state.isHost) {
+      const peers = [];
+      for (const [pid, info] of state.participants) {
+        if (pid !== conn.peer) {
+          const known = state.knownPeers.get(pid);
+          peers.push({
+            id: pid,
+            name: info.name,
+            micOn: info.micOn,
+            joinTime: known?.joinTime || Date.now()
+          });
+        }
+      }
+      conn.send({
+        type: 'peer-list',
+        peers,
+        hostId: state.myId
+      });
+
+      // Send movie info + WebDAV credentials so guest can stream the same file
+      // This is sent over the P2P data channel (encrypted in transit by WebRTC DTLS).
+      if (state.selectedFile && state.dav.origin) {
+        conn.send({
+          type: 'movie-info',
+          file: {
+            name: state.selectedFile.name,
+            path: state.selectedFile.path,
+            size: state.selectedFile.size,
+            ext: state.selectedFile.ext,
+          },
+          dav: {
+            origin: state.dav.origin,
+            basePath: state.dav.basePath,
+            user: state.dav.user,
+            pass: state.dav.pass,
+          }
+        });
+      }
+
+      // Resume sync: if I'm a freshly-resumed host, ask this connecting peer
+      // where they are in the movie so my heartbeat doesn't drag them back to 0.
+      if (state.isResumingHost) {
+        conn.send({ type: 'request-guest-time' });
+      }
+
+      // Tell other peers to connect to this new one (mesh)
+      for (const [pid, c] of state.connections) {
+        if (pid !== conn.peer && c.open) {
+          c.send({ type: 'new-peer', id: conn.peer });
+        }
+      }
+    }
+
+    // Start voice call if mic is on
+    if (state.micStream) {
+      const call = state.peer.call(conn.peer, state.micStream);
+      setupCall(call);
+    }
+  });
+
+  conn.on('data', (data) => {
+    handleData(conn.peer, data);
+  });
+
+  conn.on('close', () => {
+    handlePeerLeave(conn.peer);
+  });
+
+  conn.on('error', (err) => {
+    console.warn('Conn error:', err);
+  });
+}
+
+function setupCall(call) {
+  state.calls.set(call.peer, call);
+  call.on('stream', (remoteStream) => {
+    addRemoteAudio(call.peer, remoteStream);
+  });
+  call.on('close', () => {
+    removeRemoteAudio(call.peer);
+    state.calls.delete(call.peer);
+  });
+}
+
+function addRemoteAudio(peerId, stream) {
+  removeRemoteAudio(peerId);
+  const audio = document.createElement('audio');
+  audio.id = 'audio-' + peerId;
+  audio.srcObject = stream;
+  audio.autoplay = true;
+  audio.playsInline = true;
+  audio.volume = (state.voiceVolume !== undefined) ? state.voiceVolume : 1.0;
+  $('audio-container').appendChild(audio);
+
+  // Speaking detection
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    // Stash the AC on the audio element so removeRemoteAudio can close it.
+    // Without this, every peer reconnect leaks an AudioContext and Chrome
+    // caps tabs at ~6 concurrent contexts → silent failures in long sessions.
+    audio._speakingAC = ac;
+    const src = ac.createMediaStreamSource(stream);
+    const analyser = ac.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let lastSpeechAt = 0;
+    const tick = () => {
+      if (!state.calls.has(peerId)) return;
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      const avg = sum / data.length;
+      const p = state.participants.get(peerId);
+      const now = Date.now();
+      if (p) {
+        const wasSpeaking = p.speaking;
+        if (avg > VAD_THRESHOLD) {
+          lastSpeechAt = now;
+          p.speaking = true;
+        } else if (now - lastSpeechAt > DUCK_HOLD_MS) {
+          p.speaking = false;
+        }
+        if (wasSpeaking !== p.speaking) {
+          renderParticipants();
+          // Update ducking when remote speaking state changes
+          updateDuckingState();
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  } catch(e) {}
+}
+
+function removeRemoteAudio(peerId) {
+  const a = $('audio-' + peerId);
+  if (a) {
+    if (a._speakingAC) {
+      try { a._speakingAC.close(); } catch (e) {}
+      a._speakingAC = null;
+    }
+    a.remove();
+  }
+}
+
+function handleData(fromId, data) {
+  // Track when we last heard from the current host
+  if (fromId === state.hostId) {
+    state.hostLastSeen = Date.now();
+  }
+
+  switch (data.type) {
+    case 'hello':
+      state.participants.set(fromId, {
+        name: data.name,
+        color: colorFromString(data.name),
+        micOn: data.micOn || false,
+        speaking: false
+      });
+      // Track join time for promotion algorithm
+      state.knownPeers.set(fromId, {
+        joinTime: data.joinTime || Date.now(),
+        name: data.name
+      });
+      addSystemMsg(`${data.name}님이 입장했습니다`);
+      renderParticipants();
+      updatePeerCount();
+      break;
+
+    case 'peer-list':
+      // I'm a new joiner; connect to all other peers (mesh)
+      for (const peer of data.peers) {
+        if (!state.connections.has(peer.id) && peer.id !== state.myId) {
+          const conn = state.peer.connect(peer.id, { reliable: true });
+          setupConnection(conn);
+        }
+        // Record join times for promotion algorithm
+        if (peer.joinTime) {
+          state.knownPeers.set(peer.id, { joinTime: peer.joinTime, name: peer.name });
+        }
+      }
+      // Also track who is currently host
+      if (data.hostId) {
+        state.hostId = data.hostId;
+        state.hostLastSeen = Date.now();
+        startHostWatchdog();
+      }
+      break;
+
+    case 'new-peer':
+      if (!state.connections.has(data.id) && data.id !== state.myId) {
+        const conn = state.peer.connect(data.id, { reliable: true });
+        setupConnection(conn);
+      }
+      break;
+
+    case 'chat':
+      addChatMsg(data.name, data.text, false);
+      break;
+
+    case 'sync':
+      // Only the host controls playback. Without this guard any guest can
+      // broadcast a 'sync' and rewind/pause everyone else.
+      if (fromId !== state.hostId) break;
+      handleRemoteSync(data);
+      break;
+
+    case 'mic-state':
+      const p = state.participants.get(fromId);
+      if (p) {
+        p.micOn = data.on;
+        renderParticipants();
+      }
+      break;
+
+    case 'speaking-state': {
+      // Propagated by each peer's local VAD so other peers can run audio
+      // ducking even when they're not the one receiving that peer's audio
+      // stream (in a 3+ mesh, only one peer analyses each pair's audio).
+      const sp = state.participants.get(fromId);
+      if (sp) {
+        sp.speaking = !!data.speaking;
+        renderParticipants();
+        updateDuckingState();
+      }
+      break;
+    }
+
+    case 'host-heartbeat':
+      // From current host
+      // If I think I'm host but receiving heartbeat from someone else, resolve split-brain
+      if (state.isHost && fromId !== state.myId) {
+        console.log('[split-brain] another host detected:', fromId);
+        // Lower joinTime wins. If we don't know their joinTime, look it up.
+        const otherJoin = state.knownPeers.get(fromId)?.joinTime;
+        const myJoin = state.myJoinTime;
+        let theyWin = false;
+        if (otherJoin && myJoin) {
+          if (otherJoin < myJoin) theyWin = true;
+          else if (otherJoin === myJoin && fromId < state.myId) theyWin = true;
+        } else {
+          // Tie-break by ID alone
+          if (fromId < state.myId) theyWin = true;
+        }
+        if (theyWin) {
+          console.log('[split-brain] yielding host role to', fromId);
+          addSystemMsg('호스트 역할을 양보합니다');
+          state.isHost = false;
+          state.hostId = fromId;
+          stopHostHeartbeat();
+          startHostWatchdog();
+          renderParticipants();
+        } else {
+          console.log('[split-brain] keeping host role; other will yield');
+        }
+      }
+
+      // GUEST drift correction: if heartbeat includes playback state, check our drift
+      if (!state.isHost && data.playback && state.videoUrl) {
+        const drift = (Date.now() - data.ts) / 1000;
+        const expectedTime = data.playback.paused ? data.playback.time : data.playback.time + drift;
+        const myTime = player.currentTime;
+        const diff = Math.abs(myTime - expectedTime);
+
+        // Always log drift for debugging
+        console.log('[drift] host-t:', expectedTime.toFixed(1), 'my-t:', myTime.toFixed(1), 'diff:', diff.toFixed(1), 'readyState:', player.readyState);
+
+        // Tight threshold for tight sync. Even tighter when recovering from background.
+        const threshold = state.recoveringFromBackground ? 0.3 : 0.7;
+
+        if (diff > threshold && player.readyState >= 1) {
+          console.log('[drift] CORRECTING — seeking from', myTime.toFixed(1), 'to', expectedTime.toFixed(1),
+            state.recoveringFromBackground ? '(recovering)' : '');
+          suppressSyncFor(() => {
+            player.currentTime = expectedTime;
+            // Also match play/pause state
+            if (data.playback.paused && !player.paused) {
+              player.pause();
+            } else if (!data.playback.paused && player.paused) {
+              player.play().catch((err) => {
+                console.warn('[drift] play blocked:', err.name);
+                showResumeOverlay();
+              });
+            }
+          });
+          if (state.recoveringFromBackground) {
+            state.recoveringFromBackground = false;
+            console.log('[drift] caught up after background');
+          }
+        }
+      }
+      break;
+
+    case 'host-promotion':
+      // Someone announced themselves as new host. The newHostId MUST match
+      // the actual sender — otherwise any peer could spoof a promotion and
+      // hand the victim attacker-controlled WebDAV credentials, redirecting
+      // their video stream to a malicious server.
+      if (data.newHostId !== fromId) {
+        console.warn('[promotion] rejecting spoofed host-promotion from', fromId, 'claiming', data.newHostId);
+        break;
+      }
+      console.log('[promotion] received host-promotion from', fromId, data.newHostName);
+
+      // Split-brain: if I also think I'm host, resolve
+      if (state.isHost && fromId !== state.myId) {
+        const otherJoin = state.knownPeers.get(fromId)?.joinTime;
+        const myJoin = state.myJoinTime;
+        let theyWin = false;
+        if (otherJoin && myJoin) {
+          if (otherJoin < myJoin) theyWin = true;
+          else if (otherJoin === myJoin && fromId < state.myId) theyWin = true;
+        } else {
+          if (fromId < state.myId) theyWin = true;
+        }
+        if (!theyWin) {
+          console.log('[promotion] keeping host; their promotion is rejected by tie-break');
+          // Reassert ourselves
+          broadcast({
+            type: 'host-promotion',
+            newHostId: state.myId,
+            newHostName: state.myName,
+            movieFile: state.selectedFile,
+            dav: state.dav
+          });
+          break;
+        }
+        // I yield
+        addSystemMsg('호스트 역할을 양보합니다');
+        state.isHost = false;
+        stopHostHeartbeat();
+      }
+
+      state.hostId = data.newHostId;
+      state.hostLastSeen = Date.now();
+      state.promotionInProgress = false;
+      addSystemMsg(`🎬 ${data.newHostName}님이 새 호스트가 되었습니다`);
+      renderParticipants();
+      // Update host backup with whatever the new host has
+      if (data.movieFile && data.dav) {
+        state.hostBackup = { file: data.movieFile, dav: data.dav };
+      }
+      // If I didn't have movie info yet, take it from new host
+      if (!state.isHost && !state.selectedFile && data.movieFile) {
+        state.selectedFile = data.movieFile;
+        state.dav = data.dav;
+        loadVideo();
+      }
+      // If I yielded, restart watchdog for the new host
+      if (!state.isHost) {
+        startHostWatchdog();
+      }
+      break;
+
+    case 'request-state':
+      // New peer wants current playback state — only HOST should respond
+      console.log('[recv] request-state from', fromId, 'isHost:', state.isHost);
+      if (state.isHost && state.videoUrl) {
+        const player = $('player');
+        // Send current state to the requesting peer ONLY (not broadcast)
+        sendToPeer(fromId, {
+          type: 'sync',
+          action: player.paused ? 'pause' : 'play',
+          time: player.currentTime,
+          ts: Date.now()
+        });
+        console.log('[host] sent state to', fromId, '@', player.currentTime.toFixed(2), 'paused:', player.paused);
+      }
+      // ALSO resend movie info if I'm the host (in case it was missed)
+      if (state.isHost && state.selectedFile && state.dav.origin) {
+        sendToPeer(fromId, {
+          type: 'movie-info',
+          file: state.selectedFile,
+          dav: state.dav
+        });
+      }
+      break;
+
+    case 'request-movie':
+      // Explicit re-request from a guest — host resends movie info
+      if (state.isHost && state.selectedFile && state.dav.origin) {
+        console.log('[host] resending movie info to', fromId);
+        sendToPeer(fromId, {
+          type: 'movie-info',
+          file: state.selectedFile,
+          dav: state.dav
+        });
+      }
+      break;
+
+    case 'request-guest-time': {
+      // A resumed host is asking for our current playback time so they can
+      // sync to us instead of broadcasting their fresh-start time-0.
+      const playerEl = $('player');
+      if (playerEl && state.videoUrl) {
+        sendToPeer(fromId, {
+          type: 'guest-playback-time',
+          time: playerEl.currentTime,
+          paused: playerEl.paused
+        });
+      }
+      break;
+    }
+
+    case 'guest-playback-time': {
+      // I'm the resuming host. Adopt the latest reported time among guests
+      // (they should all be roughly aligned). Only takes the first valid
+      // response within the 8s resume window — subsequent ones are ignored.
+      if (!state.isResumingHost || state.resumingTimeAccepted) break;
+      const playerEl = $('player');
+      if (!playerEl || !state.videoUrl) break;
+      if (typeof data.time !== 'number' || data.time < 0) break;
+      console.log('[resume] adopting guest playback time:', data.time, 'paused:', data.paused);
+      addSystemMsg(`재생 위치 동기화: ${Math.floor(data.time)}초`);
+      suppressSyncFor(() => {
+        playerEl.currentTime = data.time;
+        if (data.paused) playerEl.pause();
+        else playerEl.play().catch(() => {});
+      });
+      state.resumingTimeAccepted = true;
+      state.isResumingHost = false;
+      break;
+    }
+
+    case 'movie-info':
+      // Always save backup for potential host promotion
+      state.hostBackup = { file: data.file, dav: data.dav };
+      // If guest hasn't loaded yet, load now
+      if (!state.isHost && !state.selectedFile) {
+        console.log('[guest] received movie info:', data.file.name);
+        state.selectedFile = data.file;
+        state.dav = data.dav;
+        addSystemMsg(`영화 정보 수신: ${data.file.name}`);
+        // Track current host
+        state.hostId = fromId;
+        state.hostLastSeen = Date.now();
+        startHostWatchdog();
+        loadVideo();
+      }
+      break;
+  }
+}
+
+function handlePeerLeave(peerId) {
+  const p = state.participants.get(peerId);
+  if (p) addSystemMsg(`${p.name}님이 퇴장했습니다`);
+  state.participants.delete(peerId);
+  state.connections.delete(peerId);
+  state.knownPeers.delete(peerId);
+  const call = state.calls.get(peerId);
+  if (call) call.close();
+  state.calls.delete(peerId);
+  removeRemoteAudio(peerId);
+  renderParticipants();
+  updatePeerCount();
+
+  // If the host left and I'm a guest, try reconnecting to the deterministic
+  // host ID for ~30s before giving up and promoting. This handles the case
+  // where the host hit F5 and is in the middle of resumeAsHost — without
+  // this, we'd immediately promote and split-brain the room.
+  if (peerId === state.hostId && !state.isHost) {
+    console.log('[host-leave] data channel to host closed — starting reconnect loop');
+    addSystemMsg('⚠️ 호스트 연결 끊김 — 재연결 시도 중...');
+    startHostReconnectLoop();
+  }
+}
+
+function startHostReconnectLoop() {
+  if (state.hostReconnectInterval) return; // already running
+  let attempts = 0;
+  const MAX_ATTEMPTS = 15; // 15 * 2s = 30s
+  state.hostReconnectInterval = setInterval(() => {
+    attempts++;
+    // Reconnected — host is back (their peer.on('connection') will rebuild state)
+    if (state.connections.has(state.hostId)) {
+      console.log('[host-reconnect] reconnected after', attempts * 2, 's');
+      clearInterval(state.hostReconnectInterval);
+      state.hostReconnectInterval = null;
+      addSystemMsg('✅ 호스트 재연결됨');
+      return;
+    }
+    // I got promoted by something else (e.g. heartbeat watchdog) — stop
+    if (state.isHost) {
+      clearInterval(state.hostReconnectInterval);
+      state.hostReconnectInterval = null;
+      return;
+    }
+    if (attempts > MAX_ATTEMPTS) {
+      clearInterval(state.hostReconnectInterval);
+      state.hostReconnectInterval = null;
+      console.log('[host-reconnect] giving up after 30s — promoting');
+      attemptHostPromotion();
+      return;
+    }
+    // Retry: open a fresh DataConnection to the deterministic host ID
+    console.log('[host-reconnect] attempt', attempts, '/', MAX_ATTEMPTS);
+    try {
+      const conn = state.peer.connect(state.hostId, { reliable: true });
+      setupConnection(conn);
+    } catch (e) {
+      console.warn('[host-reconnect] connect failed:', e);
+    }
+  }, 2000);
+}
+
+function stopHostReconnectLoop() {
+  if (state.hostReconnectInterval) {
+    clearInterval(state.hostReconnectInterval);
+    state.hostReconnectInterval = null;
+  }
+}
+
+/* =====================================================
+   HOST PROMOTION (automatic host failover)
+===================================================== */
+
+function getElectionCandidates() {
+  // All currently-known peers including myself, sorted by joinTime, then peerId
+  const candidates = [];
+  candidates.push({
+    id: state.myId,
+    joinTime: state.myJoinTime || Date.now(),
+    name: state.myName
+  });
+  for (const [id, info] of state.knownPeers) {
+    // Only include peers that are still actually connected
+    if (state.connections.has(id) && state.connections.get(id).open) {
+      candidates.push({ id, joinTime: info.joinTime, name: info.name });
+    }
+  }
+  // Sort: earliest joiner first, then alphabetical id for tie-break
+  candidates.sort((a, b) => {
+    if (a.joinTime !== b.joinTime) return a.joinTime - b.joinTime;
+    return a.id.localeCompare(b.id);
+  });
+  return candidates;
+}
+
+function attemptHostPromotion() {
+  if (state.promotionInProgress) return;
+  if (state.isHost) return;
+  if (!state.hostBackup || !state.hostBackup.file) {
+    console.warn('[promotion] no host backup available, cannot promote');
+    addSystemMsg('⚠️ 호스트 정보 백업이 없어 자동 복구 불가');
+    return;
+  }
+
+  const candidates = getElectionCandidates();
+  if (candidates.length === 0) {
+    console.warn('[promotion] no candidates');
+    return;
+  }
+
+  const winner = candidates[0];
+  console.log('[promotion] candidates:', candidates.map(c => `${c.name}(${c.id})`).join(', '));
+  console.log('[promotion] winner:', winner.id, 'me:', state.myId);
+
+  if (winner.id === state.myId) {
+    // I am the new host!
+    promoteSelfToHost();
+  } else {
+    // Someone else will be host. Wait for them to announce.
+    state.promotionInProgress = true;
+    addSystemMsg(`${winner.name}님이 새 호스트가 됩니다`);
+    // Failsafe: if no announcement comes in 8s, try again
+    setTimeout(() => {
+      state.promotionInProgress = false;
+      if (state.hostId === null || !state.connections.has(state.hostId)) {
+        console.log('[promotion] no announcement received, retrying');
+        attemptHostPromotion();
+      }
+    }, 8000);
+  }
+}
+
+async function promoteSelfToHost() {
+  state.promotionInProgress = true;
+  console.log('[promotion] promoting self to host');
+  addSystemMsg('🎬 새 호스트가 되었습니다');
+
+  // Restore host data from backup
+  state.selectedFile = state.hostBackup.file;
+  state.dav = state.hostBackup.dav;
+  state.isHost = true;
+  state.hostId = state.myId;
+
+  // Generate new room code suffix so room indicator updates
+  const newRoomCode = state.roomCode + '*';
+  $('room-code-disp').firstChild?.remove?.(); // remove old badge content if any
+  $('room-code-disp').textContent = newRoomCode;
+
+  // Announce promotion to all remaining peers
+  broadcast({
+    type: 'host-promotion',
+    newHostId: state.myId,
+    newHostName: state.myName,
+    movieFile: state.selectedFile,
+    dav: state.dav
+  });
+
+  // Start sending host heartbeats
+  startHostHeartbeat();
+
+  // Persist for resume — without this, a self-promoted host who refreshes
+  // would also land in the "no saved session" hole.
+  saveHostSession();
+
+  // If video already loaded, keep it; otherwise load now
+  if (!state.videoUrl) {
+    await loadVideo();
+  }
+
+  toast('당신이 새 호스트가 되었습니다');
+  state.promotionInProgress = false;
+}
+
+function startHostHeartbeat() {
+  stopHostHeartbeat();
+  state.hostHeartbeatInterval = setInterval(() => {
+    // Include current playback state in heartbeat so guests can detect drift
+    const playerEl = $('player');
+    const playbackState = playerEl && state.videoUrl ? {
+      time: playerEl.currentTime,
+      paused: playerEl.paused,
+      ended: playerEl.ended
+    } : null;
+    broadcast({
+      type: 'host-heartbeat',
+      ts: Date.now(),
+      playback: playbackState
+    });
+  }, 3000);
+}
+
+function stopHostHeartbeat() {
+  if (state.hostHeartbeatInterval) {
+    clearInterval(state.hostHeartbeatInterval);
+    state.hostHeartbeatInterval = null;
+  }
+}
+
+// 30s before promoting. Long enough that a host who hit F5 can reach
+// resumeAsHost(), wait for PeerJS to release the stale deterministic ID
+// (~5–60s), reclaim it, and reconnect — all before the room gets fragmented
+// into a "promoted-guest-host vs resumed-original-host" split-brain.
+// Tradeoff: if the host genuinely crashed, guests sit on a frozen player
+// for 30s instead of 10s before auto-recovery.
+const HOST_SILENCE_PROMOTE_MS = 30000;
+
+function startHostWatchdog() {
+  stopHostWatchdog();
+  state.hostLastSeen = Date.now();
+  state.hostWatchdogInterval = setInterval(() => {
+    if (state.isHost) return;
+    if (!state.hostId) return;
+    const elapsed = Date.now() - state.hostLastSeen;
+    if (elapsed > HOST_SILENCE_PROMOTE_MS) {
+      console.log('[watchdog] host silent for', elapsed, 'ms — promoting');
+      stopHostWatchdog();
+      addSystemMsg('⚠️ 호스트 응답 없음 — 자동 복구 시도');
+      attemptHostPromotion();
+    }
+  }, 2000);
+}
+
+function stopHostWatchdog() {
+  if (state.hostWatchdogInterval) {
+    clearInterval(state.hostWatchdogInterval);
+    state.hostWatchdogInterval = null;
+  }
+}
+
+function broadcast(data) {
+  for (const conn of state.connections.values()) {
+    if (conn.open) conn.send(data);
+  }
+}
+
+function sendToPeer(peerId, data) {
+  const conn = state.connections.get(peerId);
+  if (conn && conn.open) conn.send(data);
+}
+
+function updatePeerCount() {
+  const n = state.participants.size;
+  $('peer-count').textContent = n + '명';
+  $('tab-ppl-count').textContent = n;
+}
+
+/* =====================================================
+   THEATER / VIDEO
+===================================================== */
+async function enterTheater() {
+  showScreen('theater');
+  $('room-code-disp').textContent = state.roomCode;
+  updatePeerCount();
+  renderParticipants();
+
+  if (state.isHost) {
+    // Persist the host session so a Ctrl+Shift+R can reclaim the room.
+    saveHostSession();
+    // Host loads video immediately
+    await loadVideo();
+    // Auto-open share modal so host can invite friends
+    setTimeout(() => openShareModal(), 800);
+  } else {
+    // Guest: wait for movie-info from host (handled in 'data' message handler)
+    showWaitingForMovieUI();
+    addSystemMsg('호스트가 선택한 영화를 받는 중...');
+
+    // Retry mechanism: ask host every 3 seconds until we get movie info
+    let retryCount = 0;
+    const maxRetries = 10;
+    state.movieRequestInterval = setInterval(() => {
+      if (state.selectedFile) {
+        // Got it; stop retrying
+        clearInterval(state.movieRequestInterval);
+        state.movieRequestInterval = null;
+        return;
+      }
+      retryCount++;
+      if (retryCount > maxRetries) {
+        clearInterval(state.movieRequestInterval);
+        state.movieRequestInterval = null;
+        showRetryButton();
+        return;
+      }
+      // Sanity: if no peer connection has opened by retry 2 (~6s in), the
+      // share link is likely pointing at a stale PeerJS registration. No
+      // point burning all 10 retries on an empty connections map.
+      if (retryCount >= 2 && state.connections.size === 0) {
+        console.warn('[guest] no open connections after', retryCount, 'retries — surfacing retry UI early');
+        clearInterval(state.movieRequestInterval);
+        state.movieRequestInterval = null;
+        showRetryButton();
+        return;
+      }
+      console.log('[guest] requesting movie info, attempt', retryCount);
+      // Ask all connected peers (host should respond)
+      for (const peerId of state.connections.keys()) {
+        sendToPeer(peerId, { type: 'request-movie' });
+        sendToPeer(peerId, { type: 'request-state' });
+      }
+    }, 3000);
+
+    // First request after 1 second
+    setTimeout(() => {
+      if (state.selectedFile) return;
+      for (const peerId of state.connections.keys()) {
+        sendToPeer(peerId, { type: 'request-movie' });
+        sendToPeer(peerId, { type: 'request-state' });
+      }
+    }, 1000);
+  }
+}
+
+function showWaitingForMovieUI() {
+  $('video-loading').style.display = 'grid';
+  $('video-loading').innerHTML = `
+    <div style="text-align:center;color:#fff;max-width:280px;padding:0 20px;">
+      <div class="spinner" style="margin:0 auto 14px;"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:10px;">
+        호스트의 영화 정보를 기다리는 중...
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">
+        호스트와의 연결을 확인하는 중입니다
+      </div>
+    </div>
+  `;
+}
+
+function showRetryButton() {
+  $('video-loading').style.display = 'grid';
+  const isRelayRetry = sessionStorage.getItem('cineparty.autoRelay') === 'true';
+  $('video-loading').innerHTML = `
+    <div style="text-align:center;color:#fff;max-width:300px;padding:0 20px;">
+      <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+      <div style="font-family:'Fraunces',serif;font-size:17px;margin-bottom:8px;">
+        호스트에게 연결할 수 없습니다
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:18px;">
+        ${isRelayRetry
+          ? '여전히 연결이 안 되네요. 호스트가 자리를 비웠거나 차단된 환경일 수 있어요.'
+          : 'VPN 또는 방화벽이 P2P를 막고 있을 수 있어요.<br>아래 버튼으로 우회 모드를 켜고 재시도해보세요.'}
+      </div>
+      ${!isRelayRetry ? `
+      <button id="btn-retry-relay" class="btn btn-primary" style="display:inline-flex;width:auto;padding:10px 22px;">
+        🌐 우회 모드로 재시도
+      </button>
+      <br>
+      ` : ''}
+      <button id="btn-retry-connect" class="btn ${isRelayRetry ? 'btn-primary' : 'btn-ghost'}" style="display:inline-flex;width:auto;padding:10px 22px;margin-top:8px;">
+        다시 시도
+      </button>
+      <button id="btn-leave-from-wait" class="btn btn-ghost" style="display:inline-flex;width:auto;padding:10px 22px;margin-top:8px;">
+        나가기
+      </button>
+    </div>
+  `;
+  setTimeout(() => {
+    $('btn-retry-relay')?.addEventListener('click', () => {
+      // Enable relay mode and reload
+      sessionStorage.setItem('cineparty.autoRelay', 'true');
+      location.reload();
+    });
+    $('btn-retry-connect')?.addEventListener('click', () => {
+      location.reload();
+    });
+    $('btn-leave-from-wait')?.addEventListener('click', () => {
+      // Clear relay flag when leaving
+      sessionStorage.removeItem('cineparty.autoRelay');
+      clearHostSession();
+      cleanup();
+      showScreen('lobby');
+    });
+  }, 100);
+}
+
+async function loadVideo() {
+  const player = $('player');
+  // STRICT GUARD: never reload if any video src is already set
+  // (protects against the new-guest reload bug AND visibilitychange reloads)
+  if (player.src && player.src !== '' && state.videoUrl) {
+    console.warn('[loadVideo] BLOCKED: src already set, refusing to reload',
+      'src=' + player.src.substring(0, 80),
+      'readyState=' + player.readyState,
+      'currentTime=' + player.currentTime);
+    console.trace('[loadVideo] called from:');
+    return;
+  }
+  console.log('[loadVideo] starting fresh load');
+  console.trace('[loadVideo] called from:');
+
+  $('video-loading').style.display = 'grid';
+
+  // The page-load SW readiness check (line ~4622) only waits 1500ms for
+  // controllerchange. On first-ever loads — especially fresh incognito
+  // tabs — the SW is still activating at that point and we end up
+  // permanently stuck on state.swReady=false, which forces every video
+  // load through the blob fallback (downloads the entire movie before
+  // playing). Re-check here, and wait up to 5s if the controller is
+  // still pending.
+  state.swReady = await ensureSWReadyForLoad();
+
+  // Strategy 1: Service Worker streaming (preferred — instant playback, range support)
+  // Strategy 2: Blob fallback (for file:// or when SW unavailable)
+  if (state.swReady) {
+    try {
+      // Send credentials to SW first and wait for confirmation
+      await sendCredsToSW();
+      await new Promise(r => setTimeout(r, 100));
+
+      // Build SW URL safely — encode each path segment to handle [ ] ( ) and other special chars
+      const safePath = state.selectedFile.path
+        .split('/')
+        .map(seg => seg ? encodeURIComponent(seg) : '')
+        .join('/');
+      const swUrl = '/__dav__' + safePath;
+
+      console.log('[loadVideo] Using SW streaming:', swUrl);
+      console.log('[loadVideo] Original path:', state.selectedFile.path);
+      addSystemMsg('스트리밍 재생 시작');
+
+      player.src = swUrl;
+      state.videoUrl = swUrl;  // CRITICAL: mark video as loaded so request-state responds
+      player.load();
+
+      let resolved = false;
+
+      player.addEventListener('canplay', () => {
+        if (resolved) return;
+        resolved = true;
+        $('video-loading').style.display = 'none';
+        console.log('[loadVideo] SW streaming canplay');
+        // GUEST: now that video is ready, request current state from host to catch up
+        if (!state.isHost && state.hostId && state.connections.has(state.hostId)) {
+          console.log('[loadVideo] guest ready — requesting catch-up from host');
+          // Ask multiple times in case first request gets lost
+          sendToPeer(state.hostId, { type: 'request-state' });
+          setTimeout(() => {
+            if (state.hostId && state.connections.has(state.hostId)) {
+              sendToPeer(state.hostId, { type: 'request-state' });
+            }
+          }, 1500);
+        }
+      }, { once: true });
+
+      // If we get an error, fall back to blob
+      player.addEventListener('error', () => {
+        if (resolved) return;
+        resolved = true;
+        const err = player.error;
+        console.warn('[loadVideo] SW streaming failed:', err?.code, err?.message);
+        // Code 4 = MEDIA_ERR_SRC_NOT_SUPPORTED (codec issue, not network)
+        if (err?.code === 4) {
+          $('video-loading').style.display = 'none';
+          $('video-loading').innerHTML = '<div class="spinner"></div>';
+          toast('이 영상의 코덱은 브라우저에서 지원하지 않습니다 (HEVC/H.265 등)', 5000);
+          addSystemMsg('⚠️ 재생 불가: 코덱 미지원. mp4(H.264) 영상을 사용해주세요.');
+          return;
+        }
+        // Otherwise fall back to blob mode
+        loadVideoBlob();
+      }, { once: true });
+
+      return;
+    } catch (err) {
+      console.warn('[loadVideo] SW path failed, falling back:', err);
+    }
+  }
+
+  // Fallback: blob mode
+  await loadVideoBlob();
+}
+
+async function loadVideoBlob() {
+  $('video-loading').style.display = 'grid';
+  const player = $('player');
+
+  try {
+    const videoUrl = buildDavUrl(state.selectedFile.path);
+    state.videoUrl = videoUrl;
+
+    toast('영상 다운로드 시작...', 3000);
+    const fileSize = state.selectedFile.size;
+    const sizeMB = Math.round(fileSize / 1024 / 1024);
+    if (fileSize > 0) {
+      addSystemMsg(`영상 다운로드 중 (${sizeMB}MB) — 다운로드 후 재생됩니다`);
+    }
+
+    const res = await fetch(videoUrl, {
+      headers: { 'Authorization': 'Basic ' + btoa(state.dav.user + ':' + state.dav.pass) }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    let lastReportPct = -1;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (fileSize > 0) {
+        const pct = Math.floor((received / fileSize) * 100);
+        if (pct !== lastReportPct && pct % 10 === 0) {
+          lastReportPct = pct;
+          const overlay = $('video-loading');
+          if (overlay) {
+            overlay.innerHTML = `<div style="text-align:center;color:#fff;"><div class="spinner" style="margin:0 auto 12px;"></div><div style="font-family:'JetBrains Mono',monospace;font-size:13px;">${pct}%</div></div>`;
+          }
+        }
+      }
+    }
+
+    const blob = new Blob(chunks, { type: getMimeType(state.selectedFile.ext) });
+    state.videoBlobUrl = URL.createObjectURL(blob);
+    player.src = state.videoBlobUrl;
+    player.load();
+
+    player.addEventListener('canplay', () => {
+      $('video-loading').style.display = 'none';
+      $('video-loading').innerHTML = '<div class="spinner"></div>';
+    }, { once: true });
+
+  } catch (err) {
+    $('video-loading').style.display = 'none';
+    $('video-loading').innerHTML = '<div class="spinner"></div>';
+    toast('영상 로드 실패: ' + err.message, 4000);
+    addSystemMsg('영상 로드 실패: ' + err.message);
+  }
+}
+
+function getMimeType(ext) {
+  const map = {
+    mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime',
+    webm: 'video/webm', mkv: 'video/x-matroska',
+    avi: 'video/x-msvideo', ts: 'video/mp2t'
+  };
+  return map[ext] || 'video/mp4';
+}
+
+/* === Player events ===
+   Sync philosophy:
+   - play/pause/seeking events broadcast UNLESS we're processing remote sync
+     (protected by syncSuppressionDepth counter — handles overlapping events safely)
+   - User clicks on play/seek button → suppression depth = 0 → broadcast
+   - Remote sync triggers programmatic changes → suppression depth > 0 → no broadcast
+   - Host's own auto-pause (e.g. browser pausing on tab background) → broadcast
+*/
+const player = $('player');
+
+function suppressSyncFor(fn) {
+  state.syncSuppressionDepth = (state.syncSuppressionDepth || 0) + 1;
+  try { fn(); } finally {
+    setTimeout(() => {
+      state.syncSuppressionDepth = Math.max(0, state.syncSuppressionDepth - 1);
+    }, 400);
+  }
+}
+function isSyncSuppressed() {
+  return (state.syncSuppressionDepth || 0) > 0;
+}
+
+player.addEventListener('play', () => {
+  $('icon-play').style.display = 'none';
+  $('icon-pause').style.display = '';
+  if (isSyncSuppressed()) {
+    return; // From remote sync
+  }
+  // ONLY HOST broadcasts sync events — guests are receive-only
+  if (!state.isHost) {
+    return;
+  }
+  // Don't broadcast events that fired while page is hidden (mobile background)
+  if (document.visibilityState === 'hidden' || state.recentlyBackgrounded) {
+    console.log('[sync v3] play in background — NOT broadcasting');
+    return;
+  }
+  console.log('[sync v3] play foreground — broadcasting @', player.currentTime.toFixed(2));
+  broadcast({
+    type: 'sync',
+    action: 'play',
+    time: player.currentTime,
+    ts: Date.now()
+  });
+});
+
+// Diagnostic: log when video reloads or resets (helps catch the new-guest bug)
+player.addEventListener('loadstart', () => {
+  console.warn('[player] loadstart event — video src is being loaded');
+});
+player.addEventListener('emptied', () => {
+  console.warn('[player] emptied event — video element was reset');
+});
+player.addEventListener('ratechange', () => {
+  console.log('[player] ratechange — playbackRate:', player.playbackRate);
+});
+// Watch for unexpected currentTime resets. The interval is module-lifetime
+// (the player itself outlives any single room), but cleanup() resets
+// lastKnownTime so a stale value from the previous session can't mis-trigger
+// the suspicious-reset detector in the next room.
+let lastKnownTime = 0;
+setInterval(() => {
+  if (!player.paused && player.currentTime > 0) {
+    lastKnownTime = player.currentTime;
+  }
+}, 1000);
+player.addEventListener('seeking', () => {
+  // If we suddenly seek to 0 while we had a much larger time, that's suspicious
+  if (player.currentTime < 1 && lastKnownTime > 5) {
+    console.warn('[player] SUSPICIOUS RESET: was at', lastKnownTime.toFixed(2), 'now at', player.currentTime.toFixed(2));
+    // Try to recover
+    if (state.isHost && !isSyncSuppressed()) {
+      console.warn('[player] Restoring time to', lastKnownTime);
+      suppressSyncFor(() => {
+        player.currentTime = lastKnownTime;
+      });
+    }
+  }
+});
+
+player.addEventListener('pause', () => {
+  $('icon-play').style.display = '';
+  $('icon-pause').style.display = 'none';
+  if (isSyncSuppressed()) {
+    return;
+  }
+  if (player.ended) {
+    return;
+  }
+  // ONLY HOST broadcasts sync events
+  if (!state.isHost) {
+    return;
+  }
+  // Mobile browsers auto-pause when tab goes to background.
+  // Don't broadcast that — it would freeze playback for everyone else.
+  if (document.visibilityState === 'hidden' || state.recentlyBackgrounded) {
+    console.log('[sync v3] pause in background — NOT broadcasting (mobile auto-pause)');
+    return;
+  }
+  console.log('[sync v3] pause foreground — broadcasting');
+  broadcast({
+    type: 'sync',
+    action: 'pause',
+    time: player.currentTime,
+    ts: Date.now()
+  });
+});
+
+let lastSeekedTime = 0;
+player.addEventListener('seeked', () => {
+  if (isSyncSuppressed()) return;
+  if (!state.isHost) return; // Guests don't broadcast
+  if (document.visibilityState === 'hidden' || state.recentlyBackgrounded) return;
+  const now = Date.now();
+  if (now - lastSeekedTime < 200) return;
+  lastSeekedTime = now;
+  broadcast({
+    type: 'sync',
+    action: 'seek',
+    time: player.currentTime,
+    paused: player.paused,
+    ts: now
+  });
+});
+
+player.addEventListener('timeupdate', () => {
+  const dur = player.duration || 0;
+  const cur = player.currentTime;
+  $('time-text').textContent = `${fmtTime(cur)} / ${fmtTime(dur)}`;
+  if (dur > 0) {
+    $('progress-fill').style.width = ((cur / dur) * 100) + '%';
+    $('progress-thumb').style.left = ((cur / dur) * 100) + '%';
+  }
+});
+
+// User-initiated play/pause via button
+function userTogglePlay() {
+  if (player.paused) {
+    player.play().catch(e => toast('재생 실패: ' + e.message));
+  } else {
+    player.pause();
+  }
+  // 'play' / 'pause' event will fire and broadcast (since suppression is 0)
+}
+
+// User-initiated seek via progress bar
+function userSeek(targetTime) {
+  player.currentTime = targetTime;
+  // 'seeked' event will fire and broadcast
+}
+
+function handleRemoteSync(data) {
+  const drift = (Date.now() - data.ts) / 1000;
+  const targetTime = data.action === 'play' ? data.time + drift : data.time;
+
+  console.log('[sync<-]', data.action, 'remote-t:', data.time.toFixed(2), 'target:', targetTime.toFixed(2), 'my-t:', player.currentTime.toFixed(2), 'paused:', player.paused, 'recovering:', !!state.recoveringFromBackground);
+
+  // If recovering from background, FORCE seek regardless of small drift
+  // This ensures guest catches up after being away
+  const forceSeek = !!state.recoveringFromBackground;
+  const threshold = forceSeek ? 0.3 : 1.5;
+
+  suppressSyncFor(() => {
+    if (Math.abs(player.currentTime - targetTime) > threshold) {
+      console.log('[sync] seek to', targetTime.toFixed(2), forceSeek ? '(forced after background)' : '');
+      player.currentTime = targetTime;
+    }
+
+    if (data.action === 'play' && player.paused) {
+      console.log('[sync] play attempt');
+      player.play().then(() => {
+        console.log('[sync] play OK');
+      }).catch((err) => {
+        console.warn('[sync] play blocked:', err.name);
+        showResumeOverlay();
+      });
+    } else if (data.action === 'pause' && !player.paused) {
+      player.pause();
+    } else if (data.action === 'seek') {
+      if (data.paused && !player.paused) {
+        player.pause();
+      } else if (!data.paused && player.paused) {
+        player.play().catch(() => showResumeOverlay());
+      }
+    }
+
+    // Successfully caught up — exit recovery mode
+    if (forceSeek) {
+      state.recoveringFromBackground = false;
+      console.log('[sync] caught up after background');
+    }
+  });
+}
+
+// Show tap-to-resume overlay when mobile autoplay is blocked
+let resumeOverlayShown = false;
+function showResumeOverlay() {
+  if (resumeOverlayShown) return;
+  resumeOverlayShown = true;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'resume-overlay';
+  overlay.style.cssText = `
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: grid; place-items: center;
+    z-index: 30;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+  `;
+  overlay.innerHTML = `
+    <div style="text-align:center; color:#fff; padding:0 20px;">
+      <div style="width:80px;height:80px;border-radius:50%;background:var(--accent);margin:0 auto 16px;display:grid;place-items:center;box-shadow:0 0 0 8px rgba(255,87,34,0.2);">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <div style="font-family:'Fraunces',serif;font-size:18px;margin-bottom:6px;">탭해서 다시 재생</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5;">
+        브라우저 정책으로 한 번 탭이 필요해요<br>
+        호스트 시간으로 자동 동기화됩니다
+      </div>
+    </div>
+  `;
+  document.querySelector('.video-wrap').appendChild(overlay);
+
+  overlay.addEventListener('click', () => {
+    overlay.remove();
+    resumeOverlayShown = false;
+    // Request fresh state from host first to catch up
+    if (state.hostId && state.hostId !== state.myId) {
+      sendToPeer(state.hostId, { type: 'request-state' });
+    }
+    // Then play
+    setTimeout(() => {
+      player.play().catch(e => console.warn('resume play failed:', e));
+    }, 200);
+  });
+}
+
+/* === Controls === */
+$('btn-play').addEventListener('click', userTogglePlay);
+
+$('progress-track').addEventListener('click', (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  if (player.duration) {
+    userSeek(ratio * player.duration);
+  }
+});
+
+$('btn-fullscreen').addEventListener('click', () => {
+  // Use video-wrap container so chat-toasts and other overlays are visible in fullscreen
+  const wrap = document.querySelector('.video-wrap');
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    // Try container fullscreen first (preserves overlays)
+    if (wrap && wrap.requestFullscreen) {
+      wrap.requestFullscreen().catch(() => {
+        // Fallback to video element fullscreen (iOS Safari etc)
+        (player.requestFullscreen || player.webkitEnterFullscreen)?.call(player);
+      });
+    } else if (wrap && wrap.webkitRequestFullscreen) {
+      wrap.webkitRequestFullscreen();
+    } else {
+      // iOS Safari only supports video element fullscreen
+      (player.requestFullscreen || player.webkitEnterFullscreen)?.call(player);
+    }
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+  }
+});
+
+/* Show/hide controls on tap */
+let controlsTimer = null;
+function showControls() {
+  $('theater-top').classList.remove('hidden');
+  $('controls').classList.remove('hidden');
+  clearTimeout(controlsTimer);
+  controlsTimer = setTimeout(() => {
+    if (!player.paused) {
+      $('theater-top').classList.add('hidden');
+      $('controls').classList.add('hidden');
+    }
+  }, 3500);
+}
+$('player').addEventListener('click', showControls);
+$('controls').addEventListener('click', (e) => e.stopPropagation());
+$('theater-top').addEventListener('click', (e) => e.stopPropagation());
+showControls();
+
+/* =====================================================
+   VOLUME MIXER (movie + voice chat balance)
+===================================================== */
+state.movieVolume = 1.0;
+state.voiceVolume = 1.0;
+
+// Restore saved preferences
+try {
+  const savedMovie = parseFloat(localStorage.getItem('cineparty.vol.movie'));
+  const savedVoice = parseFloat(localStorage.getItem('cineparty.vol.voice'));
+  if (!isNaN(savedMovie)) state.movieVolume = savedMovie;
+  if (!isNaN(savedVoice)) state.voiceVolume = savedVoice;
+} catch(e) {}
+
+function applyMovieVolume() {
+  // If ducking is active, use the current ducking multiplier
+  const mult = state.duckingActive ? (state.duckingCurrentMultiplier || 1) : 1;
+  player.volume = state.movieVolume * mult;
+  $('vol-movie').value = Math.round(state.movieVolume * 100);
+  $('vol-movie-val').textContent = Math.round(state.movieVolume * 100);
+  try { localStorage.setItem('cineparty.vol.movie', state.movieVolume); } catch(e) {}
+}
+
+function applyVoiceVolume() {
+  // Apply to all current remote audio elements
+  document.querySelectorAll('#audio-container audio').forEach(audio => {
+    audio.volume = state.voiceVolume;
+  });
+  $('vol-voice').value = Math.round(state.voiceVolume * 100);
+  $('vol-voice-val').textContent = Math.round(state.voiceVolume * 100);
+  try { localStorage.setItem('cineparty.vol.voice', state.voiceVolume); } catch(e) {}
+}
+
+// Initialize
+applyMovieVolume();
+applyVoiceVolume();
+
+$('btn-volume').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const menu = $('volume-menu');
+  // Close subtitle menu if open
+  $('sub-menu').classList.remove('show');
+  menu.classList.toggle('show');
+  // Sync UI in case state was changed elsewhere
+  applyMovieVolume();
+  applyVoiceVolume();
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btn-volume') && !e.target.closest('#volume-menu')) {
+    $('volume-menu').classList.remove('show');
+  }
+});
+
+$('vol-movie').addEventListener('input', (e) => {
+  state.movieVolume = parseInt(e.target.value, 10) / 100;
+  applyMovieVolume();
+});
+
+$('vol-voice').addEventListener('input', (e) => {
+  state.voiceVolume = parseInt(e.target.value, 10) / 100;
+  applyVoiceVolume();
+});
+
+// Presets
+$('vol-preset-balance').addEventListener('click', () => {
+  state.movieVolume = 1.0;
+  state.voiceVolume = 0.5;
+  applyMovieVolume();
+  applyVoiceVolume();
+});
+$('vol-preset-voice').addEventListener('click', () => {
+  state.movieVolume = 0.3;
+  state.voiceVolume = 1.0;
+  applyMovieVolume();
+  applyVoiceVolume();
+});
+$('vol-preset-equal').addEventListener('click', () => {
+  state.movieVolume = 1.0;
+  state.voiceVolume = 1.0;
+  applyMovieVolume();
+  applyVoiceVolume();
+});
+
+// VAD toggle. Default ON; localStorage 'false' overrides to OFF.
+// This is the single source of truth for state.vadEnabled — don't reset
+// it elsewhere or the checkbox will desync from internal state.
+state.vadEnabled = true;
+try {
+  if (localStorage.getItem('cineparty.vad') === 'false') state.vadEnabled = false;
+} catch(e) {}
+$('toggle-vad').checked = state.vadEnabled;
+
+$('toggle-vad').addEventListener('change', (e) => {
+  state.vadEnabled = e.target.checked;
+  try { localStorage.setItem('cineparty.vad', state.vadEnabled); } catch(err) {}
+  // If turning off VAD, ensure track is enabled (always send audio)
+  if (!state.vadEnabled && state.micStream) {
+    const audioTrack = state.micStream.getAudioTracks()[0];
+    if (audioTrack) audioTrack.enabled = true;
+    state.localSpeaking = false;
+    updateMyAvatarSpeaking(false);
+    updateDuckingState();
+  } else if (state.vadEnabled && state.micStream) {
+    // Turning back on; mute until detected
+    const audioTrack = state.micStream.getAudioTracks()[0];
+    if (audioTrack) audioTrack.enabled = false;
+    // Restart VAD loop if needed
+    if (!state.localVADRaf) startLocalVAD(state.micStream);
+  }
+  toast(state.vadEnabled ? '자동 마이크 켜짐' : '자동 마이크 꺼짐 (항상 송출)');
+});
+
+// Ducking toggle
+try {
+  const savedDuck = localStorage.getItem('cineparty.ducking');
+  state.duckingEnabled = (savedDuck !== 'false');
+  $('toggle-ducking').checked = state.duckingEnabled;
+} catch(e) { state.duckingEnabled = true; }
+
+$('toggle-ducking').addEventListener('change', (e) => {
+  state.duckingEnabled = e.target.checked;
+  try { localStorage.setItem('cineparty.ducking', state.duckingEnabled); } catch(err) {}
+  if (!state.duckingEnabled) {
+    // Reset to full volume immediately
+    state.duckingTargetMultiplier = 1;
+    state.duckingCurrentMultiplier = 1;
+    if (player) player.volume = state.movieVolume;
+  }
+  toast(state.duckingEnabled ? '자동 음량 감소 켜짐' : '자동 음량 감소 꺼짐');
+});
+
+// Noise suppression toggle (Web Audio chain on outgoing mic)
+state.noiseSuppressEnabled = true;
+try {
+  const savedNS = localStorage.getItem('cineparty.noiseSuppress');
+  state.noiseSuppressEnabled = (savedNS !== 'false');
+  $('toggle-noise-suppress').checked = state.noiseSuppressEnabled;
+} catch(e) {}
+
+$('toggle-noise-suppress').addEventListener('change', (e) => {
+  state.noiseSuppressEnabled = e.target.checked;
+  try { localStorage.setItem('cineparty.noiseSuppress', state.noiseSuppressEnabled); } catch(err) {}
+  toast(state.noiseSuppressEnabled
+    ? '노이즈 억제 켜짐 (다음 마이크 켤 때 적용)'
+    : '노이즈 억제 꺼짐 (다음 마이크 켤 때 적용)');
+});
+
+/* =====================================================
+   VOICE CHAT
+===================================================== */
+/* =====================================================
+   VOICE ACTIVITY DETECTION (VAD) + AUDIO DUCKING
+   - Local mic auto-mutes when you're not speaking
+   - Movie volume automatically dims when ANYONE is speaking
+===================================================== */
+// state.vadEnabled is initialized from localStorage at the toggle-vad load
+// block above — DON'T overwrite it here, that would discard the saved
+// preference and desync the checkbox from internal state.
+state.localSpeaking = false;
+state.remoteSpeaking = false;       // any remote peer currently speaking
+state.duckingTargetMultiplier = 1;  // 1 = full volume, < 1 = ducked
+state.duckingCurrentMultiplier = 1; // smoothly approaches target
+
+// VAD parameters
+const VAD_THRESHOLD = 18;            // 0-255, average frequency energy
+const VAD_HOLD_MS = 800;             // keep mic on this long after silence
+const DUCK_LEVEL = 0.25;             // movie volume drops to 25% when speaking
+const DUCK_HOLD_MS = 600;            // keep ducked this long after speech ends
+
+// Local VAD: monitor own mic and gate the outgoing audio track
+function startLocalVAD(stream) {
+  if (!stream) return;
+  let audioTrack = stream.getAudioTracks()[0];
+  if (!audioTrack) return;
+
+  let analyser;
+  // Prefer the audio graph's analyser (post-noise-suppression) if present;
+  // it shares the AudioContext that was already resumed at graph build time.
+  if (state.audioGraph && state.audioGraph.analyser) {
+    analyser = state.audioGraph.analyser;
+  } else {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      // The user-gesture from the mic-button click was consumed by the await
+      // in getUserMedia(). On Chrome the new AudioContext can start suspended,
+      // making getByteFrequencyData() return zeros forever — VAD never fires
+      // and the track stays disabled. Resume explicitly so VAD actually runs.
+      if (ac.state === 'suspended') ac.resume().catch(() => {});
+      const src = ac.createMediaStreamSource(stream);
+      analyser = ac.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      state.localVADContext = ac;
+    } catch (e) {
+      console.warn('VAD failed:', e);
+      // Without VAD we can't gate, so leave the track enabled rather than muted.
+      if (audioTrack && state.vadEnabled) audioTrack.enabled = true;
+      return;
+    }
+  }
+
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  let lastSpeechAt = 0;
+  const startedAt = Date.now();
+  let everSawSignal = false;
+
+  state.localVADRaf = null;
+
+  const tick = () => {
+    if (!state.micStream || !state.vadEnabled) {
+      // VAD disabled or mic off — make sure track is enabled
+      if (audioTrack && !audioTrack.enabled) audioTrack.enabled = true;
+      if (state.localSpeaking) {
+        state.localSpeaking = false;
+        updateMyAvatarSpeaking(false);
+        broadcastSpeakingState(false);
+      }
+      state.localVADRaf = null;
+      return;
+    }
+
+    analyser.getByteFrequencyData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i];
+    const avg = sum / data.length;
+    const now = Date.now();
+
+    if (sum > 0) everSawSignal = true;
+    // Safety net: if 3s in we've never seen a single nonzero frequency bin,
+    // the AudioContext is almost certainly stuck suspended. Fall back to
+    // always-on so the user isn't silently muted.
+    if (!everSawSignal && (now - startedAt > 3000)) {
+      console.warn('VAD: no signal after 3s — falling back to always-on');
+      // Always transmit (we can't gate without VAD), but DON'T claim
+      // speaking=true forever — that would lock ducking at -75% and the
+      // avatar speaking indicator would stay on. Better to lose the
+      // speaking-state UX than to sound permanently "loud".
+      if (audioTrack) audioTrack.enabled = true;
+      state.localSpeaking = false;
+      updateMyAvatarSpeaking(false);
+      broadcastSpeakingState(false);
+      updateDuckingState();
+      state.localVADRaf = null;
+      return;
+    }
+
+    if (avg > VAD_THRESHOLD) {
+      lastSpeechAt = now;
+      if (!state.localSpeaking) {
+        state.localSpeaking = true;
+        if (audioTrack) audioTrack.enabled = true;
+        updateMyAvatarSpeaking(true);
+        broadcastSpeakingState(true);
+        updateDuckingState();
+      }
+    } else {
+      // Quiet — turn off after hold time
+      if (state.localSpeaking && (now - lastSpeechAt > VAD_HOLD_MS)) {
+        state.localSpeaking = false;
+        if (audioTrack) audioTrack.enabled = false;
+        updateMyAvatarSpeaking(false);
+        broadcastSpeakingState(false);
+        updateDuckingState();
+      }
+    }
+
+    state.localVADRaf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+// Web Audio chain on the outgoing mic: highpass kills hum/AC rumble,
+// dynamics compressor evens out voice level. VAD analyser taps the same
+// graph so it sees the cleaned signal. Returns the processed MediaStream
+// to use as the actual outgoing track.
+async function buildAudioProcessingGraph(rawStream) {
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  // Resume in case the user-gesture expired during the getUserMedia await.
+  if (ac.state === 'suspended') {
+    try { await ac.resume(); } catch (e) {}
+  }
+  const src = ac.createMediaStreamSource(rawStream);
+
+  let chainOut = src;
+  if (state.noiseSuppressEnabled) {
+    const highpass = ac.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 120;  // cuts hum, AC, mic rumble
+    highpass.Q.value = 0.7;
+
+    const compressor = ac.createDynamicsCompressor();
+    compressor.threshold.value = -28;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 6;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.18;
+
+    src.connect(highpass);
+    highpass.connect(compressor);
+    chainOut = compressor;
+  }
+
+  const analyser = ac.createAnalyser();
+  analyser.fftSize = 256;
+  chainOut.connect(analyser);
+
+  const dest = ac.createMediaStreamDestination();
+  chainOut.connect(dest);
+
+  return { ac, analyser, processedStream: dest.stream };
+}
+
+function stopLocalVAD() {
+  if (state.localVADRaf) {
+    cancelAnimationFrame(state.localVADRaf);
+    state.localVADRaf = null;
+  }
+  if (state.localVADContext) {
+    try { state.localVADContext.close(); } catch (e) {}
+    state.localVADContext = null;
+  }
+  state.localSpeaking = false;
+}
+
+function updateMyAvatarSpeaking(isSpeaking) {
+  const me = state.participants.get(state.myId);
+  if (me) {
+    me.speaking = isSpeaking;
+    renderParticipants();
+  }
+}
+
+function broadcastSpeakingState(speaking) {
+  // Optional: notify peers of my speaking state for UI purposes
+  // (audio track enable/disable already mutes the actual stream)
+  broadcast({ type: 'speaking-state', speaking });
+}
+
+// Audio ducking: when anyone is speaking, lower movie volume smoothly
+function updateDuckingState() {
+  // If ducking disabled, always full volume
+  if (state.duckingEnabled === false) {
+    state.duckingTargetMultiplier = 1;
+    return;
+  }
+  // Determine if anyone (local or remote) is speaking
+  let anySpeaking = state.localSpeaking;
+  if (!anySpeaking) {
+    for (const [pid, info] of state.participants) {
+      if (pid !== state.myId && info.micOn && info.speaking) {
+        anySpeaking = true;
+        break;
+      }
+    }
+  }
+  state.duckingTargetMultiplier = anySpeaking ? DUCK_LEVEL : 1;
+}
+
+// Smooth ducking animation (60fps)
+function duckingTick() {
+  if (!state.duckingActive) return;
+  const target = state.duckingTargetMultiplier;
+  const current = state.duckingCurrentMultiplier;
+  const diff = target - current;
+  if (Math.abs(diff) > 0.005) {
+    // Smooth approach (ease)
+    state.duckingCurrentMultiplier = current + diff * 0.12;
+  } else {
+    state.duckingCurrentMultiplier = target;
+  }
+  // Apply ducked volume to player
+  const player = $('player');
+  if (player) {
+    player.volume = (state.movieVolume || 1) * state.duckingCurrentMultiplier;
+  }
+  requestAnimationFrame(duckingTick);
+}
+
+function startDucking() {
+  if (state.duckingActive) return;
+  state.duckingActive = true;
+  state.duckingCurrentMultiplier = 1;
+  state.duckingTargetMultiplier = 1;
+  duckingTick();
+}
+
+function stopDucking() {
+  state.duckingActive = false;
+  state.duckingCurrentMultiplier = 1;
+  // Restore full movie volume
+  const player = $('player');
+  if (player) player.volume = state.movieVolume || 1;
+}
+
+$('btn-mic').addEventListener('click', async () => {
+  if (state.micOn) {
+    // Turn off
+    stopLocalVAD();
+    if (state.audioGraph) {
+      try { state.audioGraph.ac.close(); } catch (e) {}
+      state.audioGraph = null;
+    }
+    if (state.rawMicStream) {
+      state.rawMicStream.getTracks().forEach(t => t.stop());
+      state.rawMicStream = null;
+    }
+    if (state.micStream) {
+      state.micStream.getTracks().forEach(t => t.stop());
+      state.micStream = null;
+    }
+    for (const call of state.calls.values()) call.close();
+    state.calls.clear();
+    state.micOn = false;
+    $('btn-mic').classList.remove('active');
+    broadcast({ type: 'mic-state', on: false });
+    const me = state.participants.get(state.myId);
+    if (me) { me.micOn = false; me.speaking = false; renderParticipants(); }
+    // Stop the ducking rAF loop entirely — without this it keeps running
+    // forever, fighting subsequent volume changes after re-entering a room.
+    stopDucking();
+    toast('마이크 꺼짐');
+  } else {
+    // Turn on. Guard against spam-clicks during the awaits below — without
+    // this, a second click before getUserMedia/buildAudioProcessingGraph
+    // resolves would silently overwrite state.rawMicStream / state.audioGraph
+    // and leak a live mic track + AudioContext.
+    if (state.micStarting) return;
+    state.micStarting = true;
+    try {
+      state.rawMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false
+      });
+      // Wrap the raw mic in our Web Audio chain (highpass + compressor).
+      // The processed stream is what peers hear and what VAD analyses.
+      state.audioGraph = await buildAudioProcessingGraph(state.rawMicStream);
+      state.micStream = state.audioGraph.processedStream;
+      state.micOn = true;
+      $('btn-mic').classList.add('active');
+      broadcast({ type: 'mic-state', on: true });
+      const me = state.participants.get(state.myId);
+      if (me) { me.micOn = true; renderParticipants(); }
+      // Call all peers
+      for (const peerId of state.connections.keys()) {
+        const call = state.peer.call(peerId, state.micStream);
+        setupCall(call);
+      }
+      // Start VAD on local mic — initially mute the track until speech detected
+      const audioTrack = state.micStream.getAudioTracks()[0];
+      if (audioTrack && state.vadEnabled) audioTrack.enabled = false;
+      startLocalVAD(state.micStream);
+      // Start ducking system
+      startDucking();
+      toast(state.vadEnabled
+        ? '🎙️ 마이크 켜짐 (말할 때만 송출)'
+        : '🎙️ 마이크 켜짐 (항상 송출)');
+    } catch (err) {
+      // Roll back any partial state so the next click starts clean.
+      if (state.audioGraph) {
+        try { state.audioGraph.ac.close(); } catch (e) {}
+        state.audioGraph = null;
+      }
+      if (state.rawMicStream) {
+        state.rawMicStream.getTracks().forEach(t => t.stop());
+        state.rawMicStream = null;
+      }
+      state.micStream = null;
+      toast('마이크 접근 실패: ' + err.message);
+    } finally {
+      state.micStarting = false;
+    }
+  }
+});
+
+/* =====================================================
+   SIDE PANEL (chat / participants)
+===================================================== */
+function openPanel(tab = 'chat') {
+  state.panelOpen = true;
+  $('side-panel').classList.add('open');
+  $('backdrop').classList.add('show');
+  switchTab(tab);
+  if (tab === 'chat') {
+    state.unreadCount = 0;
+    updateUnread();
+    clearFsUnread();
+  }
+}
+function closePanel() {
+  state.panelOpen = false;
+  $('side-panel').classList.remove('open');
+  $('backdrop').classList.remove('show');
+}
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel-content').forEach(c => c.classList.toggle('active', c.dataset.tab === tab));
+  if (tab === 'chat') {
+    state.unreadCount = 0;
+    updateUnread();
+    clearFsUnread();
+    setTimeout(() => $('chat-input').focus(), 100);
+  }
+}
+$('btn-chat').addEventListener('click', () => openPanel('chat'));
+$('btn-people').addEventListener('click', () => openPanel('people'));
+$('backdrop').addEventListener('click', closePanel);
+document.querySelectorAll('.panel-tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+// Tap the fullscreen unread pill → open chat panel (and clear via openPanel)
+$('fs-unread-pill').addEventListener('click', () => openPanel('chat'));
+
+// Exiting fullscreen counts as "user has seen it" — clear the pill so it
+// doesn't linger when the regular top-bar badge becomes visible again.
+const _fsExitClear = () => { if (!isInFullscreen()) clearFsUnread(); };
+document.addEventListener('fullscreenchange', _fsExitClear);
+document.addEventListener('webkitfullscreenchange', _fsExitClear);
+
+/* === Chat === */
+function addChatMsg(name, text, self) {
+  const wrap = $('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg' + (self ? ' self' : '');
+  const color = colorFromString(name);
+  msg.innerHTML = `
+    <div class="msg-meta" style="${self ? '' : 'color:' + color}">${escapeHtml(name)}</div>
+    <div class="msg-bubble">${escapeHtml(text)}</div>
+  `;
+  wrap.appendChild(msg);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  if (!self && !state.panelOpen) {
+    state.unreadCount++;
+    updateUnread();
+  }
+
+  // Show floating toast over the video (especially useful in fullscreen)
+  // Show for everyone except your own messages on your own screen
+  if (!state.panelOpen) {
+    showChatToast(name, text, self, color);
+  }
+}
+function addSystemMsg(text) {
+  const wrap = $('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg system';
+  msg.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div>`;
+  wrap.appendChild(msg);
+  wrap.scrollTop = wrap.scrollHeight;
+  // Don't show system messages as toast (would be too noisy)
+}
+
+/* Floating chat toasts visible during playback / fullscreen */
+function isInFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function updateFsUnreadPill() {
+  const pill = $('fs-unread-pill');
+  const countEl = $('fs-unread-pill-count');
+  if (!pill || !countEl) return;
+  const n = state.fsUnreadCount || 0;
+  if (n > 0 && isInFullscreen()) {
+    countEl.textContent = n > 9 ? '9+' : String(n);
+    pill.classList.add('show');
+  } else {
+    pill.classList.remove('show');
+  }
+}
+function clearFsUnread() {
+  state.fsUnreadCount = 0;
+  // Also fade out any pinned toast — user has acknowledged
+  document.querySelectorAll('#chat-toasts .chat-toast.pinned').forEach(p => {
+    p.classList.remove('pinned');
+    p.classList.add('fading');
+    setTimeout(() => p.remove(), 600);
+  });
+  updateFsUnreadPill();
+}
+function showChatToast(name, text, self, color) {
+  const container = $('chat-toasts');
+  if (!container) return;
+
+  const fs = isInFullscreen();
+  const toast = document.createElement('div');
+  toast.className = 'chat-toast' + (self ? ' self' : '') + (fs ? ' pinned' : '');
+  toast.innerHTML = `<span class="toast-name" style="color:${self ? '#ffb89e' : color}">${escapeHtml(name)}</span>${escapeHtml(text)}`;
+
+  if (fs) {
+    // Demote any previously-pinned toast so only the latest stays put.
+    container.querySelectorAll('.chat-toast.pinned').forEach(p => {
+      p.classList.remove('pinned');
+      p.classList.add('fading');
+      setTimeout(() => p.remove(), 600);
+    });
+  }
+  container.appendChild(toast);
+
+  // Limit to 4 visible toasts; remove oldest non-pinned if more
+  while (container.children.length > 4) {
+    const oldest = container.firstChild;
+    if (oldest && !oldest.classList.contains('pinned')) {
+      oldest.remove();
+    } else {
+      break;
+    }
+  }
+
+  if (fs) {
+    // Track unread count for remote messages only — self messages aren't
+    // "missed". Pinned toast itself stays until the user acknowledges
+    // (chat panel open or fullscreen exit).
+    if (!self) {
+      state.fsUnreadCount = (state.fsUnreadCount || 0) + 1;
+      updateFsUnreadPill();
+    }
+    return;
+  }
+
+  // Windowed playback — original 5s auto-fade behavior
+  setTimeout(() => {
+    toast.classList.add('fading');
+    setTimeout(() => toast.remove(), 600);
+  }, 5000);
+}
+function updateUnread() {
+  const badge = $('unread-badge');
+  if (state.unreadCount > 0) {
+    badge.textContent = state.unreadCount > 9 ? '9+' : state.unreadCount;
+    badge.style.display = 'grid';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+function sendChat() {
+  const input = $('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  addChatMsg(state.myName, text, true);
+  broadcast({ type: 'chat', name: state.myName, text });
+  input.value = '';
+}
+$('btn-send-chat').addEventListener('click', sendChat);
+$('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendChat();
+});
+
+/* === Participants === */
+function renderParticipants() {
+  const wrap = $('participants');
+  wrap.innerHTML = '';
+  for (const [id, info] of state.participants) {
+    const isMe = id === state.myId;
+    const isHost = id === state.hostId;
+    const initial = info.name.charAt(0).toUpperCase();
+    const el = document.createElement('div');
+    el.className = 'participant';
+    const hostBadge = isHost ? '<span style="display:inline-block;background:var(--gold);color:#1a1a1a;font-size:9px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:6px;letter-spacing:0.05em;">HOST</span>' : '';
+    el.innerHTML = `
+      <div class="avatar ${info.speaking && info.micOn ? 'speaking-ring' : ''}" style="background:${info.color}">${escapeHtml(initial)}</div>
+      <div class="p-info">
+        <div class="p-name">${escapeHtml(info.name)}${isMe ? ' (나)' : ''}${hostBadge}</div>
+        <div class="p-status"><span class="dot"></span>연결됨</div>
+      </div>
+      <div class="p-icons">
+        ${info.micOn
+          ? '<svg class="on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>'
+          : '<svg class="off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M12 19v3"/></svg>'
+        }
+      </div>
+    `;
+    wrap.appendChild(el);
+  }
+  updatePeerCount();
+}
+
+/* === Share invite modal === */
+function buildInviteText() {
+  const baseUrl = window.location.origin + window.location.pathname;
+  const inviteLink = baseUrl + '#code=' + state.roomCode;
+  const movieName = state.selectedFile?.name || '영화';
+
+  return {
+    link: inviteLink,
+    text: `🎬 씨네 파티 초대!
+
+${state.myName}님이 함께 영화 보자고 합니다.
+오늘의 영화: ${movieName}
+
+▼ 아래 링크를 누르면 자동으로 입장돼요
+${inviteLink}
+
+또는 코드 직접 입력: ${state.roomCode}`
+  };
+}
+
+function openShareModal() {
+  const { link, text } = buildInviteText();
+  $('modal-room-code').textContent = state.roomCode;
+  $('share-link-input').value = link;
+  $('invite-preview').textContent = text;
+  $('share-modal').classList.add('show');
+}
+
+function closeShareModal() {
+  $('share-modal').classList.remove('show');
+}
+
+$('room-code-disp').addEventListener('click', openShareModal);
+$('btn-close-share').addEventListener('click', closeShareModal);
+$('share-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'share-modal') closeShareModal();
+});
+
+$('btn-copy-link').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('share-link-input').value);
+    toast('링크 복사 완료');
+  } catch (e) {
+    $('share-link-input').select();
+    document.execCommand('copy');
+    toast('링크 복사 완료');
+  }
+});
+
+$('btn-share-message').addEventListener('click', async () => {
+  const { text } = buildInviteText();
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('메시지 복사 완료! 카톡에 붙여넣기 하세요');
+  } catch (e) {
+    toast('복사 실패: 위 메시지를 직접 복사해주세요', 3000);
+  }
+});
+
+$('btn-native-share').addEventListener('click', async () => {
+  const { link, text } = buildInviteText();
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: '씨네 파티 초대',
+        text: text,
+        url: link
+      });
+    } catch (e) {
+      // User cancelled or share failed
+    }
+  } else {
+    // Fallback: copy
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('공유 메뉴를 지원하지 않아 메시지를 복사했어요');
+    } catch (e) {
+      toast('공유 기능을 사용할 수 없습니다');
+    }
+  }
+});
+
+/* === Leave === */
+$('btn-leave').addEventListener('click', () => {
+  if (!confirm('파티에서 나가시겠습니까?')) return;
+  // Explicit leave: drop the resume-host session. (cleanup() itself no longer
+  // does this because it also fires on every F5 via beforeunload.)
+  clearHostSession();
+  cleanup();
+  showScreen('lobby');
+});
+
+function cleanup() {
+  if (state.movieRequestInterval) {
+    clearInterval(state.movieRequestInterval);
+    state.movieRequestInterval = null;
+  }
+  if (state.guestHostConnTimeout) {
+    clearTimeout(state.guestHostConnTimeout);
+    state.guestHostConnTimeout = null;
+  }
+  if (state.resumingHostTimeout) {
+    clearTimeout(state.resumingHostTimeout);
+    state.resumingHostTimeout = null;
+  }
+  state.isResumingHost = false;
+  stopHostReconnectLoop();
+  // Reset the suspicious-reset detector's reference so a stale time from this
+  // session can't fire on the next room's first seek.
+  lastKnownTime = 0;
+  stopHostHeartbeat();
+  stopHostWatchdog();
+  // Stop the ducking rAF loop. Without this it keeps running indefinitely
+  // and a stale loop from the previous session writes player.volume in the next.
+  stopDucking();
+  // Mic teardown must mirror the mic-off branch — otherwise the AudioContext
+  // and raw mic track stay alive and the browser's red mic indicator stays on
+  // after leaving the room.
+  stopLocalVAD();
+  if (state.audioGraph) {
+    try { state.audioGraph.ac.close(); } catch (e) {}
+    state.audioGraph = null;
+  }
+  if (state.rawMicStream) {
+    state.rawMicStream.getTracks().forEach(t => t.stop());
+    state.rawMicStream = null;
+  }
+  if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
+  for (const call of state.calls.values()) call.close();
+  for (const conn of state.connections.values()) conn.close();
+  if (state.peer) state.peer.destroy();
+  if (state.videoBlobUrl) URL.revokeObjectURL(state.videoBlobUrl);
+  if (state.lastSubBlobUrl) {
+    try { URL.revokeObjectURL(state.lastSubBlobUrl); } catch (e) {}
+    state.lastSubBlobUrl = null;
+  }
+  // NOTE: don't clear the saved host session here — cleanup() also runs from
+  // the `beforeunload` listener (every F5/Ctrl+Shift+R), and clearing on
+  // unload defeats the entire resume feature. clearHostSession() is wired
+  // separately to the explicit btn-leave handler.
+
+  // Clear credentials in SW
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    try {
+      navigator.serviceWorker.controller.postMessage({ type: 'clear-credentials' });
+    } catch (e) {}
+  }
+
+  state.connections.clear();
+  state.calls.clear();
+  state.participants.clear();
+  state.micStream = null;
+  state.micOn = false;
+  state.peer = null;
+  state.videoUrl = null;
+  state.videoBlobUrl = null;
+  state.unreadCount = 0;
+
+  $('player').src = '';
+  $('chat-messages').innerHTML = '';
+  $('btn-mic').classList.remove('active');
+  updateUnread();
+  closePanel();
+  $('btn-create-room').disabled = false;
+  $('btn-guest-join').disabled = false;
+  clearStatus('room-status');
+  clearStatus('guest-status');
+  state.selectedFile = null;
+  state.isHost = false;
+  state.hostId = null;
+  state.myJoinTime = null;
+  state.knownPeers.clear();
+  state.hostBackup = null;
+  state.hostLastSeen = 0;
+  state.promotionInProgress = false;
+  state.hasEnteredTheater = false;
+  state.roomCode = null;
+  // Reset lobby to role choice
+  backToRoleChoice();
+}
+
+/* =====================================================
+   SUBTITLES
+===================================================== */
+$('btn-subs').addEventListener('click', () => {
+  $('sub-menu').classList.toggle('show');
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btn-subs') && !e.target.closest('#sub-menu')) {
+    $('sub-menu').classList.remove('show');
+  }
+});
+
+$('sub-off').addEventListener('click', () => {
+  for (const t of player.textTracks) t.mode = 'disabled';
+  $('sub-menu').classList.remove('show');
+  refreshSubMenu();
+});
+
+$('sub-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  let vtt;
+  if (file.name.toLowerCase().endsWith('.srt')) {
+    vtt = srtToVtt(text);
+  } else {
+    vtt = text;
+  }
+  const blob = new Blob([vtt], { type: 'text/vtt' });
+  // Revoke the previous subtitle blob URL before creating a new one — without
+  // this, every subtitle swap leaks a blob for the rest of the session.
+  if (state.lastSubBlobUrl) {
+    try { URL.revokeObjectURL(state.lastSubBlobUrl); } catch (e) {}
+  }
+  const url = URL.createObjectURL(blob);
+  state.lastSubBlobUrl = url;
+
+  const track = document.createElement('track');
+  track.kind = 'subtitles';
+  track.label = file.name.replace(/\.(srt|vtt)$/i, '');
+  track.srclang = 'ko';
+  track.src = url;
+  track.default = true;
+  player.appendChild(track);
+
+  // Activate it
+  setTimeout(() => {
+    for (const t of player.textTracks) t.mode = 'disabled';
+    if (player.textTracks.length > 0) {
+      player.textTracks[player.textTracks.length - 1].mode = 'showing';
+    }
+    refreshSubMenu();
+  }, 100);
+
+  toast('자막 추가됨: ' + track.label);
+  e.target.value = '';
+  $('sub-menu').classList.remove('show');
+});
+
+function refreshSubMenu() {
+  const list = $('sub-list');
+  list.innerHTML = '';
+  Array.from(player.textTracks).forEach((tr, i) => {
+    const item = document.createElement('div');
+    item.className = 'sub-menu-item' + (tr.mode === 'showing' ? ' active' : '');
+    item.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${tr.mode === 'showing' ? '<polyline points="20 6 9 17 4 12"/>' : ''}</svg>
+      ${escapeHtml(tr.label || '자막 ' + (i+1))}
+    `;
+    item.addEventListener('click', () => {
+      for (const t of player.textTracks) t.mode = 'disabled';
+      tr.mode = 'showing';
+      refreshSubMenu();
+      $('sub-menu').classList.remove('show');
+    });
+    list.appendChild(item);
+  });
+}
+
+function srtToVtt(srt) {
+  let vtt = 'WEBVTT\n\n';
+  vtt += srt
+    .replace(/\r/g, '')
+    .replace(/^\d+\n/gm, '')
+    .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  return vtt;
+}
+
+/* =====================================================
+   PREVENT SLEEP / WAKE LOCK
+===================================================== */
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Keep `recentlyBackgrounded` true for a short window so any auto play/pause
+    // events that fire while we're catching up don't broadcast or get re-broadcast.
+    if (state.recentlyBackgroundedTimer) clearTimeout(state.recentlyBackgroundedTimer);
+    state.recentlyBackgroundedTimer = setTimeout(() => {
+      state.recentlyBackgrounded = false;
+    }, 2000);
+
+    if (wakeLock !== null) requestWakeLock();
+
+    // When coming back into focus, give host time to respond before promoting
+    // Reset the host-last-seen timer so watchdog doesn't immediately fire promotion
+    if (!state.isHost && state.hostId) {
+      console.log('[visibility v3] back to foreground — resetting host watchdog');
+      state.hostLastSeen = Date.now();
+      // Ping the host to verify they're alive
+      sendToPeer(state.hostId, { type: 'host-ping', ts: Date.now() });
+      // The watchdog was stopped on the going-to-background branch; restart it
+      // so this guest can still detect a host disconnect after foregrounding.
+      if (state.hostWatchdogPaused) {
+        state.hostWatchdogPaused = false;
+        startHostWatchdog();
+      }
+    }
+
+    // Reconnect peer if disconnected
+    if (state.peer && state.peer.disconnected) {
+      console.log('[visibility v3] peer disconnected, attempting reconnect');
+      try { state.peer.reconnect(); } catch (e) {}
+    }
+
+    // If guest is still waiting for movie info, ask again
+    if (!state.isHost && !state.selectedFile && state.connections.size > 0) {
+      console.log('[visibility v3] guest still waiting, requesting movie info');
+      for (const peerId of state.connections.keys()) {
+        sendToPeer(peerId, { type: 'request-movie' });
+      }
+    }
+
+    // Catch up: ask host for current playback state when returning to foreground
+    // Multiple aggressive attempts because P2P may be unstable right after returning
+    if (!state.isHost && state.hostId && state.connections.has(state.hostId)) {
+      console.log('[visibility v3] catching up — requesting current state from host');
+      // Mark that we're recovering from background — accept any sync as authoritative
+      state.recoveringFromBackground = true;
+      sendToPeer(state.hostId, { type: 'request-state' });
+      // Retry several times to ensure we catch up
+      [500, 1500, 3000, 5000].forEach(delay => {
+        setTimeout(() => {
+          if (state.recoveringFromBackground && state.hostId && state.connections.has(state.hostId)) {
+            console.log('[visibility v3] retry catch-up after', delay, 'ms');
+            sendToPeer(state.hostId, { type: 'request-state' });
+          }
+        }, delay);
+      });
+      // Stop recovery mode after 6 seconds
+      setTimeout(() => { state.recoveringFromBackground = false; }, 6000);
+    }
+  } else {
+    // Going to background — set flag immediately so any pause event fired
+    // RIGHT AFTER this won't broadcast
+    state.recentlyBackgrounded = true;
+    if (state.recentlyBackgroundedTimer) {
+      clearTimeout(state.recentlyBackgroundedTimer);
+      state.recentlyBackgroundedTimer = null;
+    }
+    console.log('[visibility v3] going to background, recentlyBackgrounded=true');
+    if (state.hostWatchdogInterval) {
+      stopHostWatchdog();
+      state.hostWatchdogPaused = true;
+    }
+  }
+});
+
+// pagehide also fires before background on mobile sometimes
+window.addEventListener('pagehide', () => {
+  state.recentlyBackgrounded = true;
+  console.log('[pagehide v3] recentlyBackgrounded=true');
+});
+
+player.addEventListener('play', requestWakeLock);
+
+/* =====================================================
+   PAGE EXIT
+===================================================== */
+window.addEventListener('beforeunload', cleanup);
+
+/* =====================================================
+   SERVICE WORKER (for streaming video playback)
+===================================================== */
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    console.log('[SW] Not supported');
+    return;
+  }
+  if (location.protocol === 'file:') {
+    console.log('[SW] Skipping registration on file:// (will use blob fallback)');
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: './' });
+    console.log('[SW] Registered, scope:', reg.scope);
+
+    // Force update check (in case sw.js was updated on server)
+    try { await reg.update(); } catch (e) {}
+
+    // Wait for SW to become active and controlling
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) => {
+        navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+        setTimeout(resolve, 1500);
+      });
+    }
+
+    state.swRegistration = reg;
+    state.swReady = !!navigator.serviceWorker.controller;
+    console.log('[SW] Ready:', state.swReady);
+  } catch (err) {
+    console.warn('[SW] Registration failed:', err);
+    state.swReady = false;
+  }
+}
+
+// Re-checks SW readiness at video-load time. The initial registration check
+// has a tight 1500ms window that often misses fresh installs (incognito,
+// first-ever load). By the time the user is loading a video, the SW has had
+// plenty of time to activate — but state.swReady may still be stuck false.
+async function ensureSWReadyForLoad() {
+  if (!('serviceWorker' in navigator)) return false;
+  if (location.protocol === 'file:') return false;
+  if (navigator.serviceWorker.controller) {
+    if (!state.swReady) console.log('[SW] became ready after initial check');
+    return true;
+  }
+  console.log('[SW] no controller yet — waiting up to 5s for controllerchange');
+  return new Promise((resolve) => {
+    const onChange = () => {
+      cleanup();
+      const ready = !!navigator.serviceWorker.controller;
+      console.log('[SW] controllerchange — ready:', ready);
+      resolve(ready);
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      console.warn('[SW] still no controller after 5s — falling back to blob');
+      resolve(false);
+    }, 5000);
+    function cleanup() {
+      navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+      clearTimeout(timer);
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', onChange);
+  });
+}
+
+async function sendCredsToSW() {
+  if (!navigator.serviceWorker.controller) {
+    throw new Error('SW not controlling page');
+  }
+  return new Promise((resolve, reject) => {
+    const channel = new MessageChannel();
+    const timeout = setTimeout(() => reject(new Error('SW credentials timeout')), 3000);
+
+    // Listen for confirmation via main SW message handler
+    const onMessage = (e) => {
+      if (e.data && e.data.type === 'credentials-set') {
+        clearTimeout(timeout);
+        navigator.serviceWorker.removeEventListener('message', onMessage);
+        resolve();
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+
+    navigator.serviceWorker.controller.postMessage({
+      type: 'set-credentials',
+      credentials: {
+        origin: state.dav.origin,
+        basePath: state.dav.basePath,
+        user: state.dav.user,
+        pass: state.dav.pass,
+      }
+    });
+  });
+}
+
+// Register SW immediately on page load
+registerServiceWorker();
+
+// Version banner — if you don't see this in the console, you're running an old cached copy!
+console.log('%c🎬 씨네 파티 v3 (background-pause-fix)', 'background:#ff5722;color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;');
+console.log('If you don\'t see [sync v3] logs when playing, clear cache and reload!');
+
+/* =====================================================
+   AUTO-JOIN FROM URL (#code=ABC-123)
+   If URL has #code=XXX-XXX, auto-fill guest form
+===================================================== */
+function checkAutoJoin() {
+  const hash = window.location.hash;
+  const match = hash.match(/code=([A-Z0-9-]+)/i);
+  if (match) {
+    const code = match[1].toUpperCase();
+    // If the link's room code matches our saved host session, prefer the
+    // resume flow (the link was probably the host's own share link reopened
+    // after a refresh). Show the resume panel exclusively and skip guest UI.
+    const saved = getResumableHostSession();
+    if (saved && saved.roomCode === code) {
+      showResumePanel(saved);
+      $('role-panel').style.display = 'none';
+      $('host-panel').style.display = 'none';
+      $('guest-panel').style.display = 'none';
+      return;
+    }
+    // Otherwise: normal guest flow
+    $('role-panel').style.display = 'none';
+    $('host-panel').style.display = 'none';
+    $('guest-panel').style.display = 'block';
+    $('guest-code').value = code;
+    // Focus nickname field if empty, otherwise highlight join button
+    const nameInput = $('guest-name');
+    setTimeout(() => {
+      if (!nameInput.value) {
+        nameInput.focus();
+      } else {
+        $('btn-guest-join').focus();
+      }
+    }, 100);
+  }
+}
+checkAutoJoin();
+window.addEventListener('hashchange', checkAutoJoin);
+
+</script>
+</body>
+</html>
