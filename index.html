@@ -1950,6 +1950,14 @@ function showResumePanel(saved) {
   $('resume-movie-name').textContent = saved.selectedFile.name || '—';
   $('resume-room-code').textContent = saved.roomCode;
   $('resume-panel').style.display = '';
+  // Scroll the lobby to the top so the resume banner is the first thing the
+  // user sees — without this, on small screens it can be pushed below the
+  // fold and missed entirely.
+  setTimeout(() => {
+    const lobby = document.querySelector('#lobby');
+    if (lobby) lobby.scrollTop = 0;
+    $('resume-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
 }
 
 async function resumeAsHost(saved) {
@@ -3031,9 +3039,13 @@ async function promoteSelfToHost() {
 function startHostHeartbeat() {
   stopHostHeartbeat();
   state.hostHeartbeatInterval = setInterval(() => {
-    // Include current playback state in heartbeat so guests can detect drift
+    // While resuming, don't include playback time in the heartbeat — we
+    // haven't yet adopted the room's true position from the reconnecting
+    // guest, so broadcasting our local time-0 would yank everyone backward.
+    // Send the heartbeat with playback:null so guests know we're alive but
+    // skip drift-correction this round.
     const playerEl = $('player');
-    const playbackState = playerEl && state.videoUrl ? {
+    const playbackState = (playerEl && state.videoUrl && !state.isResumingHost) ? {
       time: playerEl.currentTime,
       paused: playerEl.paused,
       ended: playerEl.ended
