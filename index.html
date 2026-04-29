@@ -4082,24 +4082,31 @@ try {
   if (savedDevice) state.micDeviceId = savedDevice;
 } catch(e) {}
 
-// On some browsers (esp. Safari), enumerateDevices() returns audioinput
-// entries with empty `label` until mic permission has been granted at least
-// once. This requests a throwaway mic and immediately stops it — just enough
-// to unlock labels for the dropdown. Returns false on permission denial.
+// Unlocks labels for `enumerateDevices()` AND forces Android out of
+// MODE_IN_COMMUNICATION so the device list reflects real audioinput
+// hardware instead of the four call-style presets (default / speakerphone
+// / headset earpiece / bluetooth headset).
 //
-// Side-effect to be aware of on first-time grant with a Classic-BT headset
-// connected: this unconstrained getUserMedia briefly forces A2DP→SCO before
-// the stop() releases it. The user will hear a momentary mono blip the very
-// first time they enable phone mode in a session. Subsequent toggles take
-// the early-return path (labels are already populated) and don't do this.
+// The probe constraints matter: with `echoCancellation: true`, Android
+// Chrome maps to VOICE_COMMUNICATION audio source which switches the
+// system to VoIP mode. In that mode the BT link goes to SCO (the very
+// thing we're trying to avoid), output gets bundled with input, and
+// subsequent `enumerateDevices()` returns the call-style topology. With
+// AEC/NS/AGC false we map to a regular MIC source, stay in MODE_NORMAL,
+// pick up the built-in mic by default (no SCO transition), and the
+// device list shows actual hardware names.
+//
+// Always re-probes (no early-return) because if a previous unconstrained
+// getUserMedia happened earlier in the session — e.g., headset-mode mic
+// being toggled — the device topology is stuck in VoIP form and we need
+// a fresh non-VoIP capture to flip back. Returns false on permission
+// denial.
 async function ensureMicLabels() {
   try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const inputs = devices.filter(d => d.kind === 'audioinput');
-    if (inputs.length && inputs.some(d => d.label)) return true;
-  } catch(e) {}
-  try {
-    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const tmp = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      video: false,
+    });
     tmp.getTracks().forEach(t => t.stop());
     return true;
   } catch(e) {
@@ -4513,6 +4520,17 @@ async function enableMic({ ptt = false } = {}) {
     // doesn't pick the BT mic and trigger A2DP→SCO. `exact` (not `ideal`)
     // matters here: silently falling back to the BT mic would defeat the
     // whole point of this mode.
+    //
+    // Phone mode also disables the VoIP audio hints (echoCancellation /
+    // noiseSuppression / autoGainControl). On Android Chrome these flip the
+    // system into MODE_IN_COMMUNICATION, which bundles input AND output
+    // routing — the device dropdown collapses to four call-style presets
+    // (default / speakerphone / earpiece / bluetooth) and any selection
+    // drags output along, defeating the whole point. Without the hints we
+    // stay in MODE_NORMAL and the dropdown shows real audioinput devices
+    // while BT output stays on A2DP. Our Web Audio chain already handles
+    // noise suppression (highpass + compressor) so this is mostly a wash;
+    // BT headphones are sealed enough that AEC isn't critical for our use.
     const audioConstraints = {
       echoCancellation: true,
       noiseSuppression: true,
@@ -4520,6 +4538,9 @@ async function enableMic({ ptt = false } = {}) {
     };
     if (state.micSource === 'phone' && state.micDeviceId) {
       audioConstraints.deviceId = { exact: state.micDeviceId };
+      audioConstraints.echoCancellation = false;
+      audioConstraints.noiseSuppression = false;
+      audioConstraints.autoGainControl = false;
     }
     state.rawMicStream = await navigator.mediaDevices.getUserMedia({
       audio: audioConstraints,
