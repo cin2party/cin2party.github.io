@@ -559,6 +559,22 @@
   }
   .control-row .icon-btn:active { background: rgba(255,255,255,0.1); }
   .control-row .icon-btn.active { color: var(--accent); }
+  /* Skip-back / skip-forward. .long-active is added once the 400ms hold
+     threshold passes — it tells the user that releasing now will fire the
+     long delta (60s) instead of the short one (10s). The gold matches the
+     PTT acquiring color so the "in-flight transition" visual language is
+     consistent across the app. */
+  .control-row .icon-btn.seek-btn {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.15s, color 0.15s, background 0.15s;
+  }
+  .control-row .icon-btn.seek-btn.long-active {
+    transform: scale(1.15);
+    color: var(--gold);
+    background: rgba(212, 166, 87, 0.18);
+  }
   .spacer { flex: 1; }
 
   /* ========== SIDE PANEL (chat / participants) ========== */
@@ -1650,9 +1666,21 @@
       <div class="progress-thumb" id="progress-thumb"></div>
     </div>
     <div class="control-row">
+      <button class="icon-btn seek-btn" id="btn-seek-back" type="button" title="뒤로 (탭 10초 / 길게 60초)" aria-label="뒤로 — 탭 10초, 길게 누르면 60초">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="11 17 6 12 11 7"/>
+          <polyline points="18 17 13 12 18 7"/>
+        </svg>
+      </button>
       <button class="play-btn" id="btn-play">
         <svg id="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         <svg id="icon-pause" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+      </button>
+      <button class="icon-btn seek-btn" id="btn-seek-fwd" type="button" title="앞으로 (탭 10초 / 길게 60초)" aria-label="앞으로 — 탭 10초, 길게 누르면 60초">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="13 17 18 12 13 7"/>
+          <polyline points="6 17 11 12 6 7"/>
+        </svg>
       </button>
       <span class="time-text" id="time-text">00:00 / 00:00</span>
       <div class="spacer"></div>
@@ -1845,6 +1873,12 @@ const state = {
   participants: new Map(),    // peerId -> { name, color, micOn }
   micStream: null,
   micOn: false,
+  // Blob URLs for auto-loaded subtitles (one per matched .srt/.vtt next
+  // to the video file). Tracked separately from state.lastSubBlobUrl,
+  // which is the manual file-picker's single slot. Both get revoked on
+  // cleanup() — without that, every room exit leaks the blobs for the
+  // rest of the page lifetime.
+  autoSubBlobUrls: [],
   // Mic source mode. 'headset' = whatever the OS picks (typically the BT
   // headset mic, which forces A2DP→SCO mono on Classic BT). 'phone' = pin
   // a specific non-BT input via deviceId so the BT link stays on A2DP.
@@ -3471,6 +3505,12 @@ async function loadVideo() {
 
   $('video-loading').style.display = 'grid';
 
+  // Kick off subtitle auto-discovery in parallel with video loading. Don't
+  // await — subs are nice-to-have and the video should never block on them.
+  // <track> elements can be appended at any time; the browser will pick
+  // them up once the video element is live.
+  autoLoadSubtitles().catch(err => console.warn('[subs] auto-load failed:', err));
+
   // The page-load SW readiness check (line ~4622) only waits 1500ms for
   // controllerchange. On first-ever loads — especially fresh incognito
   // tabs — the SW is still activating at that point and we end up
@@ -3868,6 +3908,95 @@ $('progress-track').addEventListener('click', (e) => {
     userSeek(ratio * player.duration);
   }
 });
+
+/* =====================================================
+   SKIP BACK / FORWARD
+   Tap = ±10s, hold ≥400ms before release = ±60s. Sync semantics piggyback
+   on the existing currentTime → 'seeked' event path: hosts broadcast,
+   guests adjust locally and resync on the next host broadcast.
+===================================================== */
+const SEEK_HOLD_MS = 400;
+const SEEK_SHORT_DELTA = 10;
+const SEEK_LONG_DELTA = 60;
+
+function seekBy(delta) {
+  const dur = player.duration || 0;
+  if (!dur) return;
+  player.currentTime = Math.max(0, Math.min(dur, player.currentTime + delta));
+}
+
+(function wireSeekButtons() {
+  // Each setup returns its reset() so the page-level visibilitychange
+  // handler can clear stranded state on every button at once.
+  const resets = [];
+
+  function setup(btnId, dir) {
+    const btn = $(btnId);
+    let holdTimer = null;
+    let pointerId = null;
+    let isLong = false;
+
+    const reset = () => {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      btn.classList.remove('long-active');
+      pointerId = null;
+      isLong = false;
+    };
+
+    btn.addEventListener('pointerdown', (e) => {
+      if (pointerId !== null) return; // ignore multi-touch
+      pointerId = e.pointerId;
+      isLong = false;
+      try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+      // Tapping the seek button shouldn't let the controls hide-timer fire
+      // earlier than expected. The #controls click handler stops propagation,
+      // so we have to call showControls() ourselves to reset the timer.
+      showControls();
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        isLong = true;
+        btn.classList.add('long-active');
+      }, SEEK_HOLD_MS);
+      e.preventDefault();
+    });
+
+    btn.addEventListener('pointerup', (e) => {
+      if (pointerId === null || e.pointerId !== pointerId) return;
+      // Drag-off-cancel: if the finger lifted outside the button's bounds,
+      // treat it as an abort — matches what users expect from a button.
+      // Note: when long-active is set the rect reflects the 1.15× scaled
+      // size, so the hit region is slightly more generous than the visual
+      // base frame. Acceptable — feels forgiving rather than wrong.
+      const rect = btn.getBoundingClientRect();
+      const inside = e.clientX >= rect.left && e.clientX <= rect.right &&
+                     e.clientY >= rect.top && e.clientY <= rect.bottom;
+      const useLong = isLong;
+      reset();
+      if (!inside) return;
+      const amount = useLong ? SEEK_LONG_DELTA : SEEK_SHORT_DELTA;
+      seekBy(amount * dir);
+      toast(dir > 0 ? `${amount}초 »` : `« ${amount}초`, 800);
+    });
+
+    // System cancellation (call comes in, capture stolen, etc.) — silent abort.
+    btn.addEventListener('pointercancel', (e) => {
+      if (pointerId === null || e.pointerId !== pointerId) return;
+      reset();
+    });
+
+    resets.push(reset);
+  }
+  setup('btn-seek-back', -1);
+  setup('btn-seek-fwd', +1);
+
+  // If the page hides mid-hold (incoming call, tab switch), the holdTimer
+  // could fire in the background and strand .long-active + a captured
+  // pointer that may never produce a pointerup. Mirror the PTT
+  // visibilitychange defense: reset every button on hide.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) resets.forEach(r => r());
+  });
+})();
 
 $('btn-fullscreen').addEventListener('click', () => {
   // Use video-wrap container so chat-toasts and other overlays are visible in fullscreen
@@ -5113,6 +5242,14 @@ function cleanup() {
     try { URL.revokeObjectURL(state.lastSubBlobUrl); } catch (e) {}
     state.lastSubBlobUrl = null;
   }
+  // Auto-loaded subtitles live in a separate slot so the manual file
+  // picker's single-slot revoke pattern doesn't accidentally drop them.
+  if (state.autoSubBlobUrls && state.autoSubBlobUrls.length) {
+    for (const url of state.autoSubBlobUrls) {
+      try { URL.revokeObjectURL(url); } catch (e) {}
+    }
+    state.autoSubBlobUrls = [];
+  }
   // NOTE: don't clear the saved host session here — cleanup() also runs from
   // the `beforeunload` listener (every F5/Ctrl+Shift+R), and clearing on
   // unload defeats the entire resume feature. clearHostSession() is wired
@@ -5166,6 +5303,130 @@ function cleanup() {
 /* =====================================================
    SUBTITLES
 ===================================================== */
+
+// Auto-discover subtitle files next to the loaded video and attach them
+// as <track> elements. Matches:
+//   <basename>.srt | .vtt
+//   <basename>.<langcode>.srt | .vtt   (e.g. movie.ko.srt, movie.en.vtt)
+// Silent on PROPFIND failure or no matches — auto-load is nice-to-have,
+// the existing manual file picker still works.
+//
+// Encoding caveat: WebDAV-fetched SRT/VTT is read as UTF-8 (whatever
+// res.text() decides given the response's Content-Type). Subtitle files
+// in legacy encodings (CP949/EUC-KR/CP1252) will mojibake. Same
+// limitation as the manual file picker — re-save the .srt as UTF-8.
+async function autoLoadSubtitles() {
+  if (!state.selectedFile?.path || !state.dav?.origin) return;
+
+  // Snapshot the blob-URL array at entry. cleanup() resets the field to a
+  // fresh array; if the slot identity changes mid-flight we know the
+  // session was torn down and we must abort to avoid pushing into an
+  // orphaned array (which would leak the URLs — cleanup only revokes
+  // whatever was in the array at the moment it ran).
+  const slot = state.autoSubBlobUrls;
+  if (!slot) return;
+  const aborted = () => state.autoSubBlobUrls !== slot;
+
+  const videoPath = state.selectedFile.path;
+  const lastSlash = videoPath.lastIndexOf('/');
+  if (lastSlash < 0) return;
+  const folder = videoPath.slice(0, lastSlash + 1);
+  const filename = videoPath.slice(lastSlash + 1);
+  const lastDot = filename.lastIndexOf('.');
+  const basename = lastDot > 0 ? filename.slice(0, lastDot) : filename;
+
+  let items;
+  try {
+    items = await davList(folder);
+  } catch (err) {
+    console.warn('[subs] auto-discovery PROPFIND failed:', err);
+    return;
+  }
+  if (aborted()) return;
+
+  // Match basename exactly OR basename followed by a dotted suffix that
+  // doesn't itself look like a video extension — without that exclusion,
+  // sibling files like `movie.mp4.bak.srt` would attach as a corrupt
+  // subtitle track. Filename comparison is case-sensitive, matching
+  // WebDAV behavior.
+  const subFiles = items.filter(it => {
+    if (it.isDir) return false;
+    const ext = it.ext;
+    if (ext !== 'srt' && ext !== 'vtt') return false;
+    const stem = it.name.slice(0, it.name.length - ext.length - 1);
+    if (stem === basename) return true;
+    if (!stem.startsWith(basename + '.')) return false;
+    const suffix = stem.slice(basename.length + 1).toLowerCase();
+    const firstSegment = suffix.split('.')[0];
+    if (VIDEO_EXT.includes(firstSegment)) return false;
+    return true;
+  });
+
+  if (!subFiles.length) return;
+
+  let added = 0;
+  for (const sub of subFiles) {
+    if (aborted()) return;
+    try {
+      const url = buildDavUrl(sub.path);
+      const res = await fetch(url, {
+        headers: { 'Authorization': 'Basic ' + btoa(state.dav.user + ':' + state.dav.pass) }
+      });
+      if (aborted()) return;
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (aborted()) return;
+      const vtt = sub.ext === 'srt' ? srtToVtt(text) : text;
+      const blob = new Blob([vtt], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      // Synchronous from here — cleanup() can't interleave until the next
+      // iteration's await, so pushing to `slot` (which is === current
+      // state.autoSubBlobUrls at this instant) is safe.
+      slot.push(blobUrl);
+
+      // Strip basename prefix and extension to derive a label.
+      // movie.ko.srt → "ko"; movie.srt → "자동 자막"; movie.eng.forced.srt → "eng.forced"
+      let label = sub.name.replace(/\.(srt|vtt)$/i, '');
+      if (label === basename) {
+        label = '자동 자막';
+      } else if (label.startsWith(basename + '.')) {
+        label = label.slice(basename.length + 1);
+      }
+
+      const track = document.createElement('track');
+      track.kind = 'subtitles';
+      track.label = label;
+      // srclang is informational; we don't rely on it for selection logic.
+      const langMatch = label.match(/^([a-z]{2,3})(?:[._-]|$)/i);
+      track.srclang = langMatch ? langMatch[1].toLowerCase() : 'ko';
+      track.src = blobUrl;
+      player.appendChild(track);
+      added++;
+    } catch (err) {
+      console.warn('[subs] failed to load', sub.name, err);
+    }
+  }
+
+  if (!added) return;
+
+  // Pick a track to auto-show: Korean preferred, else the first one.
+  // Brief delay lets the browser finish parsing the appended <track>s.
+  setTimeout(() => {
+    if (aborted()) return;
+    const tracks = Array.from(player.textTracks);
+    if (!tracks.length) return;
+    for (const t of tracks) t.mode = 'disabled';
+    const ko = tracks.find(t =>
+      /^kor?$/i.test(t.srclang || '') ||
+      /^(ko|kor|korean|한국어)$/i.test(t.label || '')
+    );
+    (ko || tracks[0]).mode = 'showing';
+    refreshSubMenu();
+  }, 100);
+
+  toast(`자막 ${added}개 자동 로드`);
+}
+
 $('btn-subs').addEventListener('click', () => {
   $('sub-menu').classList.toggle('show');
 });
