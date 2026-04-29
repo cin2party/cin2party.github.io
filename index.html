@@ -1130,6 +1130,62 @@
     color: var(--ink);
   }
 
+  /* Mic source mode (BT headset vs phone built-in). The .switching class
+     paints the toggle gold like the PTT acquiring state — the user gets the
+     same visual language for "audio device transition in flight." */
+  .mic-source-row {
+    display: block;
+  }
+  .mic-device-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 4px 2px 44px; /* indent under the toggle's track */
+  }
+  .mic-device-select {
+    flex: 1;
+    background: var(--bg-3);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 11px;
+    padding: 4px 6px;
+    outline: none;
+    min-width: 0;
+  }
+  .mic-device-refresh {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .mic-device-refresh:active,
+  .mic-device-refresh:hover {
+    background: var(--bg-3);
+    color: var(--ink);
+  }
+  .mic-device-hint {
+    padding: 4px 4px 0 44px;
+    font-size: 10px;
+    color: var(--gold);
+    line-height: 1.3;
+  }
+  .mic-source-row.switching .toggle-track {
+    background: rgba(212,166,87,0.55) !important;
+    animation: ptt-acquire 0.9s ease-in-out infinite;
+  }
+  .mic-source-row.switching .mic-device-select,
+  .mic-source-row.switching .mic-device-refresh {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
   /* ========== PUSH-TO-TALK (corner zone) ==========
      Bluetooth Classic forces an A2DP→SCO profile switch the instant the mic
      is opened (mono ~16 kHz). PTT keeps the mic closed by default and only
@@ -1210,6 +1266,11 @@
   .ptt-zone.disabled {
     opacity: 0.35;
     pointer-events: none;
+  }
+  /* Hide PTT entirely in phone-mic mode — there's no SCO transition to
+     debounce, so the corner button serves no purpose there. */
+  .ptt-zone.hidden-mode {
+    display: none;
   }
   @media (orientation: landscape) and (max-height: 500px) {
     .ptt-zone {
@@ -1663,6 +1724,21 @@
       </span>
     </label>
     <div class="volume-divider"></div>
+    <div class="mic-source-row">
+      <label class="volume-toggle" for="toggle-phone-mic">
+        <input type="checkbox" id="toggle-phone-mic">
+        <span class="toggle-track"></span>
+        <span class="toggle-text">
+          📱 폰 내장 마이크 사용 (BT 스테레오 유지)
+        </span>
+      </label>
+      <div class="mic-device-row" id="mic-device-row" style="display:none;">
+        <select id="mic-device-select" class="mic-device-select" aria-label="마이크 장치 선택"></select>
+        <button class="mic-device-refresh" id="mic-device-refresh" type="button" aria-label="장치 목록 새로고침" title="장치 목록 새로고침">⟳</button>
+      </div>
+      <div class="mic-device-hint" id="mic-device-hint" style="display:none;"></div>
+    </div>
+    <div class="volume-divider"></div>
     <button class="volume-preset" id="vol-preset-balance">
       🎬 영화 우선 (영화 100% / 친구 50%)
     </button>
@@ -1769,6 +1845,12 @@ const state = {
   participants: new Map(),    // peerId -> { name, color, micOn }
   micStream: null,
   micOn: false,
+  // Mic source mode. 'headset' = whatever the OS picks (typically the BT
+  // headset mic, which forces A2DP→SCO mono on Classic BT). 'phone' = pin
+  // a specific non-BT input via deviceId so the BT link stays on A2DP.
+  // Initialized from localStorage further down — keep this default.
+  micSource: 'headset',
+  micDeviceId: null,
   videoUrl: null,
   videoBlobUrl: null,
   unreadCount: 0,
@@ -3975,6 +4057,205 @@ $('toggle-noise-suppress').addEventListener('change', (e) => {
 });
 
 /* =====================================================
+   MIC SOURCE (BT headset vs phone built-in)
+   On Classic BT, opening the headset mic forces A2DP→SCO (mono ~16 kHz).
+   The "phone" mode pins a non-BT input via deviceId so the BT link stays
+   on A2DP — useful when the phone is in arm's reach (watching at home).
+   In phone mode, PTT is hidden because the SCO transition we were
+   debouncing isn't happening.
+===================================================== */
+function isBtLabel(label) {
+  if (!label) return false;
+  // Heuristic — labels vary by browser/OS. Catch the common variants.
+  // "USB" overrides — wired USB headsets often advertise "headset" in their
+  // name and we don't want to bury them at the bottom of the dropdown.
+  if (/usb/i.test(label)) return false;
+  return /bluetooth|hands?[ -]?free|\bsco\b|airpods|headset|earbuds|buds|pods/i.test(label);
+}
+
+// Pull saved prefs. micSource defaults to 'headset' (current behavior, no
+// regression for existing users). micDeviceId is only meaningful in phone mode.
+try {
+  const savedSource = localStorage.getItem('cineparty.micSource');
+  if (savedSource === 'phone' || savedSource === 'headset') state.micSource = savedSource;
+  const savedDevice = localStorage.getItem('cineparty.micDeviceId');
+  if (savedDevice) state.micDeviceId = savedDevice;
+} catch(e) {}
+
+// On some browsers (esp. Safari), enumerateDevices() returns audioinput
+// entries with empty `label` until mic permission has been granted at least
+// once. This requests a throwaway mic and immediately stops it — just enough
+// to unlock labels for the dropdown. Returns false on permission denial.
+//
+// Side-effect to be aware of on first-time grant with a Classic-BT headset
+// connected: this unconstrained getUserMedia briefly forces A2DP→SCO before
+// the stop() releases it. The user will hear a momentary mono blip the very
+// first time they enable phone mode in a session. Subsequent toggles take
+// the early-return path (labels are already populated) and don't do this.
+async function ensureMicLabels() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter(d => d.kind === 'audioinput');
+    if (inputs.length && inputs.some(d => d.label)) return true;
+  } catch(e) {}
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    tmp.getTracks().forEach(t => t.stop());
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+// Rebuild the device <select> from the current device list. Sorts non-BT
+// inputs first so the default selection is the phone mic when possible.
+async function refreshMicDeviceList() {
+  const select = $('mic-device-select');
+  if (!select) return;
+  let inputs = [];
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    inputs = devices.filter(d => d.kind === 'audioinput');
+  } catch(e) {}
+  const sorted = inputs.slice().sort((a, b) => {
+    const ab = isBtLabel(a.label) ? 1 : 0;
+    const bb = isBtLabel(b.label) ? 1 : 0;
+    return ab - bb;
+  });
+  select.innerHTML = '';
+  for (const d of sorted) {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    const name = d.label || `마이크 ${(d.deviceId || '').slice(0, 6)}…`;
+    opt.textContent = isBtLabel(d.label) ? `🎧 ${name}` : `📱 ${name}`;
+    select.appendChild(opt);
+  }
+  // Pick saved deviceId if still present, else first non-BT, else first.
+  let pick = sorted.find(d => d.deviceId === state.micDeviceId);
+  if (!pick) pick = sorted.find(d => !isBtLabel(d.label));
+  if (!pick) pick = sorted[0];
+  if (pick) {
+    select.value = pick.deviceId;
+    state.micDeviceId = pick.deviceId;
+    try { localStorage.setItem('cineparty.micDeviceId', pick.deviceId); } catch(e) {}
+  }
+  // Surface a warning if we couldn't find any non-BT input — the whole point
+  // of phone mode is moot otherwise. User may need to grant permission first.
+  const hint = $('mic-device-hint');
+  if (hint) {
+    if (!sorted.length) {
+      hint.textContent = '마이크 장치를 찾지 못했습니다. 권한을 확인하세요.';
+      hint.style.display = 'block';
+    } else if (!sorted.some(d => !isBtLabel(d.label))) {
+      hint.textContent = 'BT가 아닌 마이크를 찾지 못했습니다. 새로고침을 시도하거나 BT 헤드셋 모드를 사용하세요.';
+      hint.style.display = 'block';
+    } else {
+      hint.style.display = 'none';
+    }
+  }
+}
+
+function applyPttVisibility() {
+  // In phone mode there's no SCO transition to debounce, so PTT is hidden.
+  // Use a separate class from .disabled (which is for latched-mic suppression)
+  // to keep the two concerns from interfering.
+  $('ptt-zone').classList.toggle('hidden-mode', state.micSource === 'phone');
+}
+
+function setMicSourceSwitching(on) {
+  const wrap = document.querySelector('.mic-source-row');
+  if (wrap) wrap.classList.toggle('switching', !!on);
+}
+
+// Initial UI sync from saved state.
+$('toggle-phone-mic').checked = (state.micSource === 'phone');
+$('mic-device-row').style.display = (state.micSource === 'phone') ? 'flex' : 'none';
+applyPttVisibility();
+
+$('toggle-phone-mic').addEventListener('change', async (e) => {
+  const enabled = e.target.checked;
+  // If a mic acquisition is already in flight (PTT hold timer just fired,
+  // or the latched mic is starting up), refuse the toggle. Otherwise the
+  // hot-switch below is a no-op (micOn is still false), but the in-flight
+  // enableMic completes on the *new* state.micSource we just changed —
+  // leaving a hot mic on the wrong source with no clear error.
+  if (state.micStarting) {
+    e.target.checked = !enabled;
+    toast('마이크 전환 중 — 잠시 후 다시 시도하세요');
+    return;
+  }
+  setMicSourceSwitching(true);
+  try {
+    if (enabled) {
+      // Need labels to populate the dropdown — request permission if needed.
+      const ok = await ensureMicLabels();
+      if (!ok) {
+        e.target.checked = false;
+        toast('마이크 권한이 필요합니다');
+        return;
+      }
+      await refreshMicDeviceList();
+      state.micSource = 'phone';
+      $('mic-device-row').style.display = 'flex';
+      // Cancel any in-flight PTT hold (finger down + 150ms timer pending) so
+      // the about-to-be-hidden PTT zone doesn't fire a phantom acquisition
+      // after the source switches.
+      if (typeof pttRelease === 'function') pttRelease();
+    } else {
+      state.micSource = 'headset';
+      $('mic-device-row').style.display = 'none';
+    }
+    try { localStorage.setItem('cineparty.micSource', state.micSource); } catch(err) {}
+    applyPttVisibility();
+
+    // Hot-switch: if a latched mic is already running, restart it on the new
+    // source so the user doesn't have to toggle the mic off/on manually. PTT
+    // mics aren't restarted — by definition the user has released the button.
+    if (state.micOn && !state.micPtt) {
+      disableMic();
+      await enableMic();
+    }
+    toast(state.micSource === 'phone'
+      ? '📱 폰 내장 마이크 모드 (BT 스테레오 유지)'
+      : '🎧 BT 헤드셋 마이크 모드 (PTT 권장)');
+  } finally {
+    setMicSourceSwitching(false);
+  }
+});
+
+$('mic-device-select').addEventListener('change', async (e) => {
+  state.micDeviceId = e.target.value;
+  try { localStorage.setItem('cineparty.micDeviceId', state.micDeviceId); } catch(err) {}
+  // Hot-switch the running mic to the new device, same as the mode toggle.
+  if (state.micOn && !state.micPtt) {
+    setMicSourceSwitching(true);
+    try {
+      disableMic();
+      await enableMic();
+    } finally {
+      setMicSourceSwitching(false);
+    }
+  }
+});
+
+$('mic-device-refresh').addEventListener('click', async () => {
+  setMicSourceSwitching(true);
+  try {
+    await ensureMicLabels();
+    await refreshMicDeviceList();
+  } finally {
+    setMicSourceSwitching(false);
+  }
+});
+
+// Plug/unplug events — keep the dropdown fresh while the menu is open.
+if (navigator.mediaDevices && typeof navigator.mediaDevices.addEventListener === 'function') {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    if (state.micSource === 'phone') refreshMicDeviceList();
+  });
+}
+
+/* =====================================================
    VOICE CHAT
 ===================================================== */
 /* =====================================================
@@ -4228,8 +4509,20 @@ async function enableMic({ ptt = false } = {}) {
   if (state.micOn || state.micStarting) return false;
   state.micStarting = true;
   try {
+    // In phone-mic mode, pin a specific input via deviceId.exact so the OS
+    // doesn't pick the BT mic and trigger A2DP→SCO. `exact` (not `ideal`)
+    // matters here: silently falling back to the BT mic would defeat the
+    // whole point of this mode.
+    const audioConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    };
+    if (state.micSource === 'phone' && state.micDeviceId) {
+      audioConstraints.deviceId = { exact: state.micDeviceId };
+    }
     state.rawMicStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      audio: audioConstraints,
       video: false
     });
     state.audioGraph = await buildAudioProcessingGraph(state.rawMicStream);
@@ -4273,7 +4566,16 @@ async function enableMic({ ptt = false } = {}) {
     state.micStream = null;
     state.micOn = false;
     state.micPtt = false;
-    if (!ptt) toast('마이크 접근 실패: ' + err.message);
+    if (!ptt) {
+      // OverconstrainedError ⇒ saved deviceId is gone (USB unplugged, BT
+      // dropped, etc). Refresh the list so the user can re-pick.
+      if (err && err.name === 'OverconstrainedError' && state.micSource === 'phone') {
+        toast('선택된 마이크 장치를 찾을 수 없습니다. 목록을 새로고침합니다.');
+        try { await refreshMicDeviceList(); } catch(_) {}
+      } else {
+        toast('마이크 접근 실패: ' + err.message);
+      }
+    }
     return false;
   } finally {
     state.micStarting = false;
@@ -4370,6 +4672,14 @@ function setPttDisabled(disabled) {
 async function pttEngage() {
   // User may have released inside the 150ms window or the getUserMedia await.
   if (!pttDesired) return;
+  // Phone-mic mode hides the PTT zone, but a pointer that was already down
+  // when the mode was switched can still trigger pttEngage via the captured
+  // hold timer. Bail — there's no SCO transition to debounce in phone mode.
+  if (state.micSource === 'phone') {
+    pttDesired = false;
+    setPttUi(null);
+    return;
+  }
   // Don't fight the latched mic. If it was toggled on during our 150ms
   // debounce, snap the UI back to idle so we don't strand it in 'armed'.
   if (state.micOn && !state.micPtt) {
