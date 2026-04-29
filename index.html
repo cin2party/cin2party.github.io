@@ -953,8 +953,13 @@
     padding: 6px;
     z-index: 25;
     min-width: 180px;
+    /* 100vh on mobile Chrome = layout viewport without URL bar, so the menu's
+       top can extend above the visible area in landscape. 100dvh shrinks with
+       the URL bar; the 100vh line is a fallback for older browsers. */
     max-height: calc(100vh - 130px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+    max-height: calc(100dvh - 130px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
     overflow-y: auto;
+    overscroll-behavior: contain;
     display: none;
   }
   .sub-menu.show { display: block; }
@@ -986,11 +991,29 @@
     padding: 14px;
     z-index: 25;
     width: min(300px, 80vw);
+    /* See .sub-menu — 100dvh accounts for the mobile URL bar. */
     max-height: calc(100vh - 130px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+    max-height: calc(100dvh - 130px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
     overflow-y: auto;
+    overscroll-behavior: contain;
     display: none;
   }
   .volume-menu.show { display: block; }
+  /* Landscape on phones — viewport is short, the upward-anchored menu would
+     otherwise have its top clipped above the screen edge. Pull it down toward
+     the controls and compress paddings so the whole thing fits. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .volume-menu, .sub-menu {
+      bottom: calc(70px + env(safe-area-inset-bottom));
+      max-height: calc(100dvh - 80px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+    }
+    .volume-menu { padding: 10px; }
+    .volume-menu .volume-row { margin-bottom: 8px; }
+    .volume-menu .volume-toggle { padding: 4px 2px; font-size: 11px; }
+    .volume-menu .volume-toggle .toggle-text { line-height: 1.3; }
+    .volume-menu .volume-divider { margin: 6px 0; }
+    .volume-menu .volume-preset { padding: 6px 8px; font-size: 11px; margin-bottom: 2px; }
+  }
   .volume-row {
     display: flex;
     align-items: center;
@@ -1105,6 +1128,95 @@
   .volume-preset:hover {
     background: var(--bg-3);
     color: var(--ink);
+  }
+
+  /* ========== PUSH-TO-TALK (corner zone) ==========
+     Bluetooth Classic forces an A2DP→SCO profile switch the instant the mic
+     is opened (mono ~16 kHz). PTT keeps the mic closed by default and only
+     opens it while the user holds the corner button — releasing fully stops
+     the tracks so BT falls back to A2DP and movie audio returns to stereo.
+     The state colors signal where in the BT hand-off we are: gold = mic is
+     being acquired (SCO is switching), red = stream is up and peers receive. */
+  .ptt-zone {
+    position: absolute;
+    bottom: calc(env(safe-area-inset-bottom) + 96px);
+    right: 14px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(20,20,28,0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--ink-dim);
+    display: grid;
+    place-items: center;
+    z-index: 11;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform 0.15s, background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+    /* Long-press on the corner must not also trigger native scroll/zoom. */
+    touch-action: none;
+  }
+  .ptt-zone.armed {
+    transform: scale(1.05);
+    border-color: rgba(255,255,255,0.35);
+    color: var(--ink);
+  }
+  .ptt-zone.acquiring {
+    background: rgba(212,166,87,0.22);
+    border-color: var(--gold);
+    color: var(--gold);
+    animation: ptt-acquire 0.9s ease-in-out infinite;
+  }
+  .ptt-zone.live {
+    background: rgba(255,71,87,0.85);
+    border-color: rgba(255,71,87,1);
+    color: #fff;
+    animation: ptt-live 1.2s ease-in-out infinite;
+  }
+  @keyframes ptt-acquire {
+    0%, 100% { box-shadow: 0 0 12px rgba(212,166,87,0.35); }
+    50%      { box-shadow: 0 0 26px rgba(212,166,87,0.75); }
+  }
+  @keyframes ptt-live {
+    0%, 100% { box-shadow: 0 0 24px rgba(255,71,87,0.55); transform: scale(1.08); }
+    50%      { box-shadow: 0 0 40px rgba(255,71,87,0.95); transform: scale(1.14); }
+  }
+  .ptt-status {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--ink-low);
+    pointer-events: none;
+    white-space: nowrap;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .ptt-zone.armed .ptt-status { color: var(--ink); }
+  .ptt-zone.acquiring .ptt-status { color: var(--gold); }
+  .ptt-zone.live .ptt-status { color: #fff; font-weight: 700; }
+  /* Keep PTT visible and on top inside fullscreen, like chat-toasts. */
+  .video-wrap:fullscreen .ptt-zone,
+  .video-wrap:-webkit-full-screen .ptt-zone {
+    z-index: 2147483647;
+  }
+  /* Hide PTT when the mic is latched on via the top-bar button — the two
+     paths would race over getUserMedia and the visuals would be confusing. */
+  .ptt-zone.disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  @media (orientation: landscape) and (max-height: 500px) {
+    .ptt-zone {
+      bottom: calc(env(safe-area-inset-bottom) + 56px);
+      width: 56px;
+      height: 56px;
+    }
   }
 
   /* Floating chat toasts (overlay for fullscreen playback) */
@@ -1457,6 +1569,16 @@
     <div class="chat-toasts" id="chat-toasts"></div>
     <!-- Unread chat pill, only shown in fullscreen when there are unseen msgs -->
     <button class="fs-unread-pill" id="fs-unread-pill" type="button" aria-label="새 메시지">💬 <span id="fs-unread-pill-count">0</span></button>
+    <!-- Push-to-talk corner zone. Lives inside .video-wrap so it stays
+         visible in fullscreen (siblings of the fullscreen element vanish). -->
+    <button class="ptt-zone" id="ptt-zone" type="button" aria-label="누르고 있는 동안 말하기">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <path d="M12 19v3"/>
+      </svg>
+      <span class="ptt-status" id="ptt-status">PTT</span>
+    </button>
   </div>
 
   <div class="controls" id="controls">
@@ -4099,10 +4221,47 @@ function stopDucking() {
   if (player) player.volume = state.movieVolume || 1;
 }
 
-$('btn-mic').addEventListener('click', async () => {
-  if (state.micOn) {
-    // Turn off
-    stopLocalVAD();
+// Acquire the mic and start sending to peers. `ptt: true` skips VAD so the
+// track is always live while held — the user is intentionally speaking, and
+// the BT A2DP→SCO hand-off has already cost them stereo.
+async function enableMic({ ptt = false } = {}) {
+  if (state.micOn || state.micStarting) return false;
+  state.micStarting = true;
+  try {
+    state.rawMicStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: false
+    });
+    state.audioGraph = await buildAudioProcessingGraph(state.rawMicStream);
+    state.micStream = state.audioGraph.processedStream;
+    state.micOn = true;
+    state.micPtt = ptt;
+    $('btn-mic').classList.add('active');
+    broadcast({ type: 'mic-state', on: true });
+    const me = state.participants.get(state.myId);
+    if (me) {
+      me.micOn = true;
+      // PTT: held = speaking. VAD path leaves speaking false until detected.
+      if (ptt) me.speaking = true;
+      renderParticipants();
+    }
+    for (const peerId of state.connections.keys()) {
+      const call = state.peer.call(peerId, state.micStream);
+      setupCall(call);
+    }
+    const audioTrack = state.micStream.getAudioTracks()[0];
+    if (ptt) {
+      if (audioTrack) audioTrack.enabled = true;
+      // Tell peers we're speaking so their ducking kicks in. PTT skips VAD,
+      // which is what otherwise emits this — without it, peers wouldn't duck.
+      broadcast({ type: 'speaking-state', speaking: true });
+    } else {
+      if (audioTrack && state.vadEnabled) audioTrack.enabled = false;
+      startLocalVAD(state.micStream);
+    }
+    startDucking();
+    return true;
+  } catch (err) {
     if (state.audioGraph) {
       try { state.audioGraph.ac.close(); } catch (e) {}
       state.audioGraph = null;
@@ -4111,73 +4270,179 @@ $('btn-mic').addEventListener('click', async () => {
       state.rawMicStream.getTracks().forEach(t => t.stop());
       state.rawMicStream = null;
     }
-    if (state.micStream) {
-      state.micStream.getTracks().forEach(t => t.stop());
-      state.micStream = null;
-    }
-    for (const call of state.calls.values()) call.close();
-    state.calls.clear();
+    state.micStream = null;
     state.micOn = false;
-    $('btn-mic').classList.remove('active');
-    broadcast({ type: 'mic-state', on: false });
-    const me = state.participants.get(state.myId);
-    if (me) { me.micOn = false; me.speaking = false; renderParticipants(); }
-    // Stop the ducking rAF loop entirely — without this it keeps running
-    // forever, fighting subsequent volume changes after re-entering a room.
-    stopDucking();
+    state.micPtt = false;
+    if (!ptt) toast('마이크 접근 실패: ' + err.message);
+    return false;
+  } finally {
+    state.micStarting = false;
+  }
+}
+
+// Fully release the mic. stop() on every track is what frees the BT SCO link
+// so the headset can re-negotiate A2DP and the movie returns to stereo —
+// just disabling the track keeps SCO open and the audio stays mono.
+function disableMic() {
+  if (!state.micOn && !state.micStream) return;
+  const wasPtt = state.micPtt;
+  stopLocalVAD();
+  if (state.audioGraph) {
+    try { state.audioGraph.ac.close(); } catch (e) {}
+    state.audioGraph = null;
+  }
+  if (state.rawMicStream) {
+    state.rawMicStream.getTracks().forEach(t => t.stop());
+    state.rawMicStream = null;
+  }
+  if (state.micStream) {
+    state.micStream.getTracks().forEach(t => t.stop());
+    state.micStream = null;
+  }
+  for (const call of state.calls.values()) call.close();
+  state.calls.clear();
+  state.micOn = false;
+  state.micPtt = false;
+  $('btn-mic').classList.remove('active');
+  broadcast({ type: 'mic-state', on: false });
+  if (wasPtt) broadcast({ type: 'speaking-state', speaking: false });
+  const me = state.participants.get(state.myId);
+  if (me) { me.micOn = false; me.speaking = false; renderParticipants(); }
+  // Stop the ducking rAF loop entirely — without this it keeps running
+  // forever, fighting subsequent volume changes after re-entering a room.
+  stopDucking();
+}
+
+$('btn-mic').addEventListener('click', async () => {
+  if (state.micOn) {
+    if (state.micPtt) {
+      toast('PTT 사용 중 — 코너 버튼에서 손을 떼세요');
+      return;
+    }
+    disableMic();
     toast('마이크 꺼짐');
   } else {
-    // Turn on. Guard against spam-clicks during the awaits below — without
-    // this, a second click before getUserMedia/buildAudioProcessingGraph
-    // resolves would silently overwrite state.rawMicStream / state.audioGraph
-    // and leak a live mic track + AudioContext.
-    if (state.micStarting) return;
-    state.micStarting = true;
-    try {
-      state.rawMicStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false
-      });
-      // Wrap the raw mic in our Web Audio chain (highpass + compressor).
-      // The processed stream is what peers hear and what VAD analyses.
-      state.audioGraph = await buildAudioProcessingGraph(state.rawMicStream);
-      state.micStream = state.audioGraph.processedStream;
-      state.micOn = true;
-      $('btn-mic').classList.add('active');
-      broadcast({ type: 'mic-state', on: true });
-      const me = state.participants.get(state.myId);
-      if (me) { me.micOn = true; renderParticipants(); }
-      // Call all peers
-      for (const peerId of state.connections.keys()) {
-        const call = state.peer.call(peerId, state.micStream);
-        setupCall(call);
-      }
-      // Start VAD on local mic — initially mute the track until speech detected
-      const audioTrack = state.micStream.getAudioTracks()[0];
-      if (audioTrack && state.vadEnabled) audioTrack.enabled = false;
-      startLocalVAD(state.micStream);
-      // Start ducking system
-      startDucking();
+    const ok = await enableMic();
+    if (ok) {
       toast(state.vadEnabled
         ? '🎙️ 마이크 켜짐 (말할 때만 송출)'
         : '🎙️ 마이크 켜짐 (항상 송출)');
-    } catch (err) {
-      // Roll back any partial state so the next click starts clean.
-      if (state.audioGraph) {
-        try { state.audioGraph.ac.close(); } catch (e) {}
-        state.audioGraph = null;
-      }
-      if (state.rawMicStream) {
-        state.rawMicStream.getTracks().forEach(t => t.stop());
-        state.rawMicStream = null;
-      }
-      state.micStream = null;
-      toast('마이크 접근 실패: ' + err.message);
-    } finally {
-      state.micStarting = false;
     }
   }
 });
+
+/* =====================================================
+   PUSH-TO-TALK
+   Bluetooth Classic forces an A2DP→SCO profile switch as soon as the mic is
+   opened, which downgrades the movie to mono ~16 kHz. PTT keeps the mic shut
+   by default and only acquires it while the user holds the corner zone —
+   on release we fully stop() the tracks so BT releases SCO and the headset
+   can re-negotiate A2DP, restoring stereo movie audio.
+
+   The visual states track the BT hand-off as best we can without an SCO-up
+   event:
+     idle      → no class            "PTT"
+     armed     → press registered    "..."   (tap-filter window, ~150ms)
+     acquiring → getUserMedia in     "BT…"   (SCO is switching now)
+     live      → mic stream is up    "LIVE"  (peers are receiving)
+   The user shouldn't start talking until "LIVE" — anything before that is
+   eaten by the profile switch.
+===================================================== */
+const PTT_HOLD_MS = 150;
+let pttHoldTimer = null;
+let pttPointerId = null;
+// True from pointerdown until pointerup. Used to abort if the user releases
+// during the in-flight getUserMedia (otherwise we'd leak a hot mic).
+let pttDesired = false;
+
+function setPttUi(s) {
+  const z = $('ptt-zone');
+  z.classList.remove('armed', 'acquiring', 'live');
+  if (s) z.classList.add(s);
+  const label = $('ptt-status');
+  label.textContent = s === 'armed' ? '...' : s === 'acquiring' ? 'BT…' : s === 'live' ? 'LIVE' : 'PTT';
+}
+
+function setPttDisabled(disabled) {
+  $('ptt-zone').classList.toggle('disabled', !!disabled);
+}
+
+async function pttEngage() {
+  // User may have released inside the 150ms window or the getUserMedia await.
+  if (!pttDesired) return;
+  // Don't fight the latched mic. If it was toggled on during our 150ms
+  // debounce, snap the UI back to idle so we don't strand it in 'armed'.
+  if (state.micOn && !state.micPtt) {
+    pttDesired = false;
+    setPttUi(null);
+    return;
+  }
+  setPttUi('acquiring');
+  const ok = await enableMic({ ptt: true });
+  if (!ok) {
+    setPttUi(null);
+    return;
+  }
+  if (!pttDesired) {
+    // Released during acquisition — drop it immediately so BT goes back to A2DP.
+    disableMic();
+    setPttUi(null);
+    return;
+  }
+  setPttUi('live');
+}
+
+function pttRelease() {
+  pttDesired = false;
+  if (pttHoldTimer) {
+    clearTimeout(pttHoldTimer);
+    pttHoldTimer = null;
+  }
+  if (state.micOn && state.micPtt) disableMic();
+  setPttUi(null);
+}
+
+(function wirePtt() {
+  const zone = $('ptt-zone');
+  zone.addEventListener('pointerdown', (e) => {
+    // Latched mic via top-bar takes precedence — don't double-acquire.
+    if (state.micOn && !state.micPtt) {
+      toast('상단 마이크 버튼이 켜져 있습니다');
+      return;
+    }
+    if (state.micStarting) return;
+    pttPointerId = e.pointerId;
+    try { zone.setPointerCapture(e.pointerId); } catch (_) {}
+    pttDesired = true;
+    setPttUi('armed');
+    pttHoldTimer = setTimeout(() => {
+      pttHoldTimer = null;
+      pttEngage();
+    }, PTT_HOLD_MS);
+    e.preventDefault();
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => {
+    zone.addEventListener(ev, (e) => {
+      if (pttPointerId !== null && e.pointerId !== pttPointerId) return;
+      pttPointerId = null;
+      pttRelease();
+    });
+  });
+  // Tab/app backgrounded while held — release so we don't strand a hot mic.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && pttDesired) pttRelease();
+  });
+  // Reflect latched-mic state on the PTT zone — fade it while the top-bar
+  // mic is on so it's clear PTT is intentionally suppressed.
+  const syncDisabled = () => {
+    setPttDisabled($('btn-mic').classList.contains('active') && !state.micPtt);
+  };
+  const observer = new MutationObserver(syncDisabled);
+  observer.observe($('btn-mic'), { attributes: true, attributeFilter: ['class'] });
+  // Observers don't fire on initial state. Without this call the PTT zone
+  // would render enabled even if the mic was already latched at load time.
+  syncDisabled();
+})();
 
 /* =====================================================
    SIDE PANEL (chat / participants)
@@ -4529,11 +4794,16 @@ function cleanup() {
     } catch (e) {}
   }
 
+  // Release PTT *before* zeroing mic state — pttRelease() → disableMic() needs
+  // state.micPtt true to broadcast `speaking-state: false`. Otherwise peers
+  // stay stuck showing this participant as speaking and ducking forever.
+  if (typeof pttRelease === 'function') pttRelease();
   state.connections.clear();
   state.calls.clear();
   state.participants.clear();
   state.micStream = null;
   state.micOn = false;
+  state.micPtt = false;
   state.peer = null;
   state.videoUrl = null;
   state.videoBlobUrl = null;
