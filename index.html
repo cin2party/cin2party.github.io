@@ -2540,6 +2540,15 @@ $('btn-resume-forget').addEventListener('click', () => {
 ===================================================== */
 const WORKERS_KEY = 'cineparty.dav.workers';
 const WORKER_MODE_KEY = 'cineparty.dav.workerMode'; // last-used { mode, workerId, folder }
+const WORKERS_SEEDED_KEY = 'cineparty.dav.workersSeeded'; // one-time seed marker
+
+// Workers seeded on first launch so the maintainer's clouds are usable
+// without per-device setup. Only seeded once — deleting these via the UI
+// won't trigger re-seeding, otherwise delete would feel broken.
+const DEFAULT_WORKERS = [
+  { name: 'Koofr', baseUrl: 'https://koofr-proxy.cin2party.workers.dev/dav/Koofr/Movies', defaultFolder: '' },
+  { name: 'Box',   baseUrl: 'https://box-proxy.cin2party.workers.dev/dav/Movies',         defaultFolder: '' },
+];
 
 function loadWorkers() {
   try {
@@ -2754,6 +2763,19 @@ $('btn-worker-add-save').addEventListener('click', () => {
   applyWorkerMode(id);
 });
 
+// Seed defaults on first launch (only when the seed flag isn't set yet —
+// not when the worker list is empty, so that explicitly-deleted defaults
+// stay deleted).
+(function seedDefaultWorkersIfNeeded() {
+  try {
+    if (localStorage.getItem(WORKERS_SEEDED_KEY)) return;
+    if (loadWorkers().length === 0) {
+      saveWorkers(DEFAULT_WORKERS.map(w => ({ ...w, id: makeWorkerId() })));
+    }
+    localStorage.setItem(WORKERS_SEEDED_KEY, '1');
+  } catch {}
+})();
+
 // Initial render
 renderWorkerSelect();
 // Restore last-used mode (if any). Runs at script-init; the saved
@@ -2768,6 +2790,14 @@ renderWorkerSelect();
     sel.dataset.prev = saved.workerId;
     if (saved.folder) $('dav-folder').value = saved.folder;
     applyWorkerMode(saved.workerId);
+  } else if (saved && saved.mode === 'direct') {
+    // Existing-user upgrade path: their saved cineparty.dav.url restores
+    // into the direct-URL field, and we must keep them in direct mode
+    // even if seeded presets are present — otherwise the connect handler
+    // would silently substitute the first preset's baseUrl for their URL.
+    sel.value = '__direct__';
+    sel.dataset.prev = '__direct__';
+    applyWorkerMode('__direct__');
   } else {
     applyWorkerMode(sel.value);
   }
@@ -5482,9 +5512,12 @@ $('fs-unread-pill').addEventListener('click', () => openPanel('chat'));
 
 // Exiting fullscreen counts as "user has seen it" — clear the pill so it
 // doesn't linger when the regular top-bar badge becomes visible again.
+// iOS Safari's native video fullscreen fires webkitendfullscreen on the
+// video element, not on document — handle both.
 const _fsExitClear = () => { if (!isInFullscreen()) clearFsUnread(); };
 document.addEventListener('fullscreenchange', _fsExitClear);
 document.addEventListener('webkitfullscreenchange', _fsExitClear);
+player.addEventListener('webkitendfullscreen', _fsExitClear);
 
 /* === Chat === */
 function addChatMsg(name, text, self) {
@@ -5522,7 +5555,10 @@ function addSystemMsg(text) {
 
 /* Floating chat toasts visible during playback / fullscreen */
 function isInFullscreen() {
-  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  // player.webkitDisplayingFullscreen catches the iOS Safari case where
+  // fullscreen entered via player.webkitEnterFullscreen() — the document
+  // fullscreen properties don't reflect that mode.
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || player.webkitDisplayingFullscreen);
 }
 function updateFsUnreadPill() {
   const pill = $('fs-unread-pill');
