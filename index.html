@@ -216,6 +216,151 @@
   }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+  /* Worker preset selector — dropdown of saved Cloudflare Workers (one per
+     WebDAV cloud). User picks a worker, then types only the folder path
+     suffix; baseUrl + folder are concatenated at connect time. */
+  .worker-row {
+    display: flex;
+    gap: 8px;
+  }
+  .worker-select {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--ink);
+    font-size: 15px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .worker-select:focus { outline: none; border-color: var(--accent); }
+  .worker-manage-btn {
+    width: 44px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--ink-low);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .worker-manage-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* Prefix label + folder input combo, used when a preset is selected */
+  .prefix-input {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .prefix-input:focus-within { border-color: var(--accent); }
+  .prefix-label {
+    padding: 12px 10px 12px 14px;
+    font-size: 13px;
+    color: var(--ink-low);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+    border-right: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.02);
+  }
+  .prefix-input input {
+    flex: 1;
+    border: none !important;
+    border-radius: 0 !important;
+    min-width: 0;
+    background: transparent;
+  }
+  .prefix-input input:focus { outline: none; }
+
+  /* Inline "add new worker" mini form */
+  .worker-add-form {
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+  }
+  .worker-add-form .field { margin-bottom: 10px; }
+  .worker-add-form .field:last-child { margin-bottom: 0; }
+  .worker-add-form .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .worker-add-form .actions .btn { padding: 10px; font-size: 13px; }
+
+  /* Manage-workers modal: list of saved presets with delete */
+  .worker-list-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--ink-low);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+  .worker-list-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .worker-list-row .info {
+    flex: 1;
+    min-width: 0;
+  }
+  .worker-list-row .name {
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .worker-list-row .url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-low);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  .worker-list-row .delete {
+    background: transparent;
+    border: none;
+    color: var(--ink-low);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .worker-list-row .delete:hover {
+    color: #ff5e5e;
+    background: rgba(255, 94, 94, 0.1);
+  }
+
   .btn {
     display: flex;
     align-items: center;
@@ -1337,6 +1482,38 @@
     background: rgba(10, 10, 15, 0.88);
     box-shadow: 0 6px 22px rgba(0,0,0,0.55);
   }
+  /* Exit-fullscreen overlay button. Lives inside .video-wrap so it's still
+     painted in fullscreen (siblings of the fullscreen element vanish), and
+     only displayed while fullscreen is active. Some Android browsers don't
+     reliably exit fullscreen via the system gesture, so this gives the user
+     a guaranteed in-app exit affordance. */
+  .fs-exit-btn {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 12px);
+    right: calc(env(safe-area-inset-right) + 12px);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(10, 10, 15, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    z-index: 32;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fs-exit-btn:active { background: rgba(40, 40, 50, 0.7); }
+  .video-wrap:fullscreen .fs-exit-btn,
+  .video-wrap:-webkit-full-screen .fs-exit-btn {
+    display: flex;
+    z-index: 2147483647;
+  }
+
   /* Unread pill in fullscreen — visible in a corner of the video so the
      viewer notices new chat without exiting fullscreen. */
   .fs-unread-pill {
@@ -1490,6 +1667,39 @@
     </div>
     <div class="panel-body">
       <div class="field">
+        <label>워커 / 서버</label>
+        <div class="worker-row">
+          <select class="worker-select" id="dav-worker-select">
+            <option value="__direct__">URL 직접 입력</option>
+            <option value="__add__">+ 새 워커 추가…</option>
+          </select>
+          <button type="button" class="worker-manage-btn" id="btn-manage-workers" title="워커 관리" aria-label="워커 관리">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+        <!-- Inline "add new worker" mini form, shown when "+ 새 워커 추가" picked -->
+        <div class="worker-add-form" id="worker-add-form" style="display:none;">
+          <div class="field">
+            <label>이름</label>
+            <input id="worker-add-name" type="text" placeholder="예: Koofr" maxlength="40" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>워커 주소 (워커 URL + 워커가 허용하는 경로 prefix)</label>
+            <input id="worker-add-url" type="url" inputmode="url" placeholder="https://koofr-proxy.…workers.dev/dav/Koofr" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>기본 폴더 (선택)</label>
+            <input id="worker-add-folder" type="text" placeholder="/Movies" autocomplete="off">
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" id="btn-worker-add-cancel">취소</button>
+            <button type="button" class="btn btn-primary" id="btn-worker-add-save">추가</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Direct mode: free-text URL -->
+      <div class="field" id="dav-url-direct-field">
         <label>서버 URL</label>
         <div class="input-with-clear">
           <input id="dav-url" type="url" inputmode="url" list="dav-url-list" placeholder="https://your-proxy.workers.dev/path/to/Movies" autocomplete="off">
@@ -1499,6 +1709,16 @@
         </div>
         <datalist id="dav-url-list"></datalist>
         <div class="hint" id="dav-url-hint" style="display:none;"></div>
+      </div>
+
+      <!-- Preset mode: fixed prefix + editable folder suffix -->
+      <div class="field" id="dav-folder-field" style="display:none;">
+        <label>폴더 경로</label>
+        <div class="prefix-input">
+          <span class="prefix-label" id="dav-prefix-label" title=""></span>
+          <input id="dav-folder" type="text" placeholder="/Movies" autocomplete="off">
+        </div>
+        <div class="hint">워커의 <code>ALLOWED_PREFIX</code> 안의 경로만 접근 가능해요.</div>
       </div>
       <div class="field-row">
         <div class="field">
@@ -1644,6 +1864,11 @@
     </div>
     <!-- Floating chat toasts (visible during playback and fullscreen) -->
     <div class="chat-toasts" id="chat-toasts"></div>
+    <!-- Exit-fullscreen button, only shown while fullscreen is active.
+         Inside .video-wrap so it stays visible during fullscreen. -->
+    <button class="fs-exit-btn" id="fs-exit-btn" type="button" aria-label="전체화면 종료" title="전체화면 종료">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
     <!-- Unread chat pill, only shown in fullscreen when there are unseen msgs -->
     <button class="fs-unread-pill" id="fs-unread-pill" type="button" aria-label="새 메시지">💬 <span id="fs-unread-pill-count">0</span></button>
     <!-- Push-to-talk corner zone. Lives inside .video-wrap so it stays
@@ -1839,6 +2064,25 @@
 
       <div style="text-align:center; padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em;">
         💡 친구가 링크를 누르면 자동으로 입장
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Worker preset management modal (add/delete saved Cloudflare Workers) -->
+<div class="modal-backdrop" id="worker-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="ticket">설정</span>
+      <h2>워커 관리</h2>
+      <button class="close-btn" id="btn-close-worker-modal" aria-label="닫기">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="worker-list"></div>
+      <div style="padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; line-height: 1.5;">
+        💡 새 워커는 위 드롭다운의 <b>+ 새 워커 추가…</b>에서 추가하세요.
       </div>
     </div>
   </div>
@@ -2288,9 +2532,255 @@ $('btn-resume-forget').addEventListener('click', () => {
   }
 })();
 
+/* =====================================================
+   WORKER PRESETS — saved Cloudflare Worker URLs (one per WebDAV cloud).
+   The user picks a worker from a dropdown and types only the folder
+   suffix; baseUrl + folder are concatenated at connect time. Free-text
+   "URL 직접 입력" mode is preserved as a fallback.
+===================================================== */
+const WORKERS_KEY = 'cineparty.dav.workers';
+const WORKER_MODE_KEY = 'cineparty.dav.workerMode'; // last-used { mode, workerId, folder }
+
+function loadWorkers() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(WORKERS_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function saveWorkers(arr) {
+  try { localStorage.setItem(WORKERS_KEY, JSON.stringify(arr)); } catch {}
+}
+function findWorker(id) {
+  return loadWorkers().find(w => w.id === id) || null;
+}
+function makeWorkerId() {
+  // Stable, collision-resistant enough for a local list of <100 entries
+  return 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+// Strip trailing slashes from baseUrl; ensure folder starts with "/" (or is empty)
+function normalizeBaseUrl(s) { return s.trim().replace(/\/+$/, ''); }
+function normalizeFolder(s) {
+  const t = (s || '').trim();
+  if (!t) return '';
+  return '/' + t.replace(/^\/+/, '').replace(/\/+$/, '');
+}
+
+function renderWorkerSelect() {
+  const sel = $('dav-worker-select');
+  const prevValue = sel.value;
+  const workers = loadWorkers();
+  // Rebuild: presets first, then "+ 새 워커 추가", then "URL 직접 입력"
+  sel.innerHTML = '';
+  for (const w of workers) {
+    const opt = document.createElement('option');
+    opt.value = w.id;
+    opt.textContent = w.name;
+    sel.appendChild(opt);
+  }
+  const optAdd = document.createElement('option');
+  optAdd.value = '__add__';
+  optAdd.textContent = '+ 새 워커 추가…';
+  sel.appendChild(optAdd);
+  const optDirect = document.createElement('option');
+  optDirect.value = '__direct__';
+  optDirect.textContent = 'URL 직접 입력';
+  sel.appendChild(optDirect);
+  // Restore prior selection if it still exists, else default
+  if (prevValue && (prevValue === '__direct__' || prevValue === '__add__' || workers.some(w => w.id === prevValue))) {
+    sel.value = prevValue;
+  } else if (workers.length > 0) {
+    sel.value = workers[0].id;
+  } else {
+    sel.value = '__direct__';
+  }
+}
+
+function applyWorkerMode(workerId) {
+  // workerId can be '__direct__', '__add__', or a real id.
+  const directField = $('dav-url-direct-field');
+  const folderField = $('dav-folder-field');
+  const addForm = $('worker-add-form');
+
+  if (workerId === '__add__') {
+    // Show the inline add form; hide the connection inputs until they cancel/save
+    directField.style.display = 'none';
+    folderField.style.display = 'none';
+    addForm.style.display = 'block';
+    return;
+  }
+  addForm.style.display = 'none';
+
+  if (workerId === '__direct__') {
+    directField.style.display = '';
+    folderField.style.display = 'none';
+    return;
+  }
+
+  const w = findWorker(workerId);
+  if (!w) {
+    // Stale id — fall back to direct mode
+    $('dav-worker-select').value = '__direct__';
+    directField.style.display = '';
+    folderField.style.display = 'none';
+    return;
+  }
+  directField.style.display = 'none';
+  folderField.style.display = '';
+  const labelEl = $('dav-prefix-label');
+  labelEl.textContent = w.baseUrl;
+  labelEl.title = w.baseUrl;
+  // Pre-fill folder with the preset's default if the field is empty
+  const folderInput = $('dav-folder');
+  if (!folderInput.value && w.defaultFolder) folderInput.value = w.defaultFolder;
+}
+
+// Build the effective WebDAV URL from whichever mode is active. Returns
+// '' if the user hasn't filled in enough.
+function buildEffectiveDavUrl() {
+  const mode = $('dav-worker-select').value;
+  if (mode === '__direct__') return $('dav-url').value.trim();
+  if (mode === '__add__') return ''; // caller should validate before submit
+  const w = findWorker(mode);
+  if (!w) return '';
+  const folder = normalizeFolder($('dav-folder').value);
+  return normalizeBaseUrl(w.baseUrl) + folder;
+}
+
+function renderWorkerListModal() {
+  const list = $('worker-list');
+  const workers = loadWorkers();
+  list.innerHTML = '';
+  if (workers.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'worker-list-empty';
+    empty.textContent = '저장된 워커가 없어요.';
+    list.appendChild(empty);
+    return;
+  }
+  for (const w of workers) {
+    const row = document.createElement('div');
+    row.className = 'worker-list-row';
+    row.innerHTML = `
+      <div class="info">
+        <div class="name"></div>
+        <div class="url"></div>
+      </div>
+      <button class="delete" type="button" title="삭제" aria-label="삭제">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>
+      </button>
+    `;
+    row.querySelector('.name').textContent = w.name;
+    row.querySelector('.url').textContent = w.baseUrl + (w.defaultFolder ? '  → ' + w.defaultFolder : '');
+    row.querySelector('.delete').addEventListener('click', () => {
+      if (!confirm(`"${w.name}" 워커를 삭제할까요?`)) return;
+      const sel = $('dav-worker-select');
+      const wasActive = (sel.value === w.id);
+      const remaining = loadWorkers().filter(x => x.id !== w.id);
+      saveWorkers(remaining);
+      renderWorkerListModal();
+      // Rebuild dropdown. renderWorkerSelect() will keep the prior value
+      // if it's still valid; otherwise it falls back to workers[0] or
+      // __direct__. We then re-apply the mode so the visible form matches.
+      renderWorkerSelect();
+      if (wasActive) {
+        sel.value = '__direct__';
+        sel.dataset.prev = '__direct__';
+      }
+      // Ensure dataset.prev doesn't reference the deleted worker
+      if (sel.dataset.prev === w.id) sel.dataset.prev = sel.value;
+      applyWorkerMode(sel.value);
+    });
+    list.appendChild(row);
+  }
+}
+
+// Wire up the dropdown — also remember the prior value so "Cancel" on the
+// inline add-form can revert to it. We store it on the select element itself
+// so it survives renderWorkerSelect() rebuilds.
+$('dav-worker-select').dataset.prev = $('dav-worker-select').value;
+$('dav-worker-select').addEventListener('change', (e) => {
+  const sel = e.target;
+  if (sel.value !== '__add__') sel.dataset.prev = sel.value;
+  applyWorkerMode(sel.value);
+});
+
+// Manage button → open modal
+$('btn-manage-workers').addEventListener('click', () => {
+  renderWorkerListModal();
+  $('worker-modal').classList.add('show');
+});
+$('btn-close-worker-modal').addEventListener('click', () => {
+  $('worker-modal').classList.remove('show');
+});
+$('worker-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'worker-modal') $('worker-modal').classList.remove('show');
+});
+
+// Inline add-worker form
+$('btn-worker-add-cancel').addEventListener('click', () => {
+  $('worker-add-name').value = '';
+  $('worker-add-url').value = '';
+  $('worker-add-folder').value = '';
+  // Revert to whichever option was selected before the user picked "+ 새 워커 추가"
+  const sel = $('dav-worker-select');
+  sel.value = sel.dataset.prev || '__direct__';
+  applyWorkerMode(sel.value);
+});
+$('btn-worker-add-save').addEventListener('click', () => {
+  const name = $('worker-add-name').value.trim();
+  const baseUrlRaw = $('worker-add-url').value.trim();
+  const defaultFolder = normalizeFolder($('worker-add-folder').value);
+  if (!name) { toast('이름을 입력해주세요.'); $('worker-add-name').focus(); return; }
+  if (!baseUrlRaw) { toast('워커 주소를 입력해주세요.'); $('worker-add-url').focus(); return; }
+  let parsed;
+  try { parsed = new URL(baseUrlRaw); } catch { toast('올바른 URL 형식이 아닙니다.'); $('worker-add-url').focus(); return; }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    toast('http(s) URL이어야 합니다.'); return;
+  }
+  const baseUrl = normalizeBaseUrl(parsed.origin + parsed.pathname);
+  const id = makeWorkerId();
+  const arr = loadWorkers();
+  arr.push({ id, name, baseUrl, defaultFolder });
+  saveWorkers(arr);
+  // Clear inputs
+  $('worker-add-name').value = '';
+  $('worker-add-url').value = '';
+  $('worker-add-folder').value = '';
+  // Re-render and select the newly-added worker
+  renderWorkerSelect();
+  const sel = $('dav-worker-select');
+  sel.value = id;
+  sel.dataset.prev = id;
+  applyWorkerMode(id);
+});
+
+// Initial render
+renderWorkerSelect();
+// Restore last-used mode (if any). Runs at script-init; the saved
+// cineparty.dav URL is restored later but only matters in direct mode, and
+// the input is hidden under preset mode anyway, so order doesn't matter.
+(function restoreWorkerMode() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(WORKER_MODE_KEY) || 'null'); } catch {}
+  const sel = $('dav-worker-select');
+  if (saved && saved.mode === 'preset' && saved.workerId && findWorker(saved.workerId)) {
+    sel.value = saved.workerId;
+    sel.dataset.prev = saved.workerId;
+    if (saved.folder) $('dav-folder').value = saved.folder;
+    applyWorkerMode(saved.workerId);
+  } else {
+    applyWorkerMode(sel.value);
+  }
+})();
+
 // Host: WebDAV connect handler
 $('btn-connect').addEventListener('click', async () => {
-  const url = $('dav-url').value.trim();
+  const mode = $('dav-worker-select').value;
+  if (mode === '__add__') {
+    setStatus('lobby-status', '워커를 먼저 추가하거나 취소해주세요.', 'error');
+    return;
+  }
+  const url = buildEffectiveDavUrl();
   const user = $('dav-user').value.trim();
   const pass = $('dav-pass').value;
   const name = $('my-name').value.trim();
@@ -2322,6 +2812,16 @@ $('btn-connect').addEventListener('click', async () => {
   try {
     localStorage.setItem('cineparty.dav', JSON.stringify({ url, user }));
     localStorage.setItem('cineparty.name', name);
+    // Persist form mode so the next visit reopens the same dropdown state
+    if (mode === '__direct__') {
+      localStorage.setItem(WORKER_MODE_KEY, JSON.stringify({ mode: 'direct' }));
+    } else if (findWorker(mode)) {
+      localStorage.setItem(WORKER_MODE_KEY, JSON.stringify({
+        mode: 'preset',
+        workerId: mode,
+        folder: $('dav-folder').value.trim(),
+      }));
+    }
   } catch(e) {}
 
   setStatus('lobby-status', '연결 중...');
@@ -2351,19 +2851,39 @@ try {
 } catch(e) {}
 
 // Clear saved server URL + username (the trash icon next to the URL field).
+// Also clears any preset-mode folder + last-used mode, then drops the form
+// back to direct-input mode so the user can paste a fresh URL.
 $('dav-url-clear').addEventListener('click', () => {
-  try { localStorage.removeItem('cineparty.dav'); } catch(e) {}
+  try {
+    localStorage.removeItem('cineparty.dav');
+    localStorage.removeItem(WORKER_MODE_KEY);
+  } catch(e) {}
   $('dav-url').value = '';
   $('dav-user').value = '';
+  $('dav-folder').value = '';
+  const sel = $('dav-worker-select');
+  sel.value = '__direct__';
+  sel.dataset.prev = '__direct__';
+  applyWorkerMode('__direct__');
   $('dav-url').focus();
 });
 
 // Enter key triggers host connect
-['dav-url', 'dav-user', 'dav-pass', 'my-name'].forEach(id => {
+['dav-url', 'dav-folder', 'dav-user', 'dav-pass', 'my-name'].forEach(id => {
   $(id).addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       $('btn-connect').click();
+    }
+  });
+});
+
+// Enter inside the inline add-worker form saves it
+['worker-add-name', 'worker-add-url', 'worker-add-folder'].forEach(id => {
+  $(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('btn-worker-add-save').click();
     }
   });
 });
@@ -3998,10 +4518,22 @@ function seekBy(delta) {
   });
 })();
 
+// Robust exit: the existing fullscreen entry can land in three different
+// states (container Fullscreen API, video Fullscreen API, or iOS-Safari
+// native video fullscreen via webkitEnterFullscreen). Each has its own
+// dismissal call; document.exitFullscreen does NOT dismiss the iOS native
+// video case — that needs player.webkitExitFullscreen. Try them all.
+function exitFullscreenAll() {
+  try { if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen(); } catch (_) {}
+  try { if (document.webkitExitFullscreen && document.webkitFullscreenElement) document.webkitExitFullscreen(); } catch (_) {}
+  try { if (player.webkitExitFullscreen && player.webkitDisplayingFullscreen) player.webkitExitFullscreen(); } catch (_) {}
+}
+
 $('btn-fullscreen').addEventListener('click', () => {
   // Use video-wrap container so chat-toasts and other overlays are visible in fullscreen
   const wrap = document.querySelector('.video-wrap');
-  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+  const inFs = document.fullscreenElement || document.webkitFullscreenElement || player.webkitDisplayingFullscreen;
+  if (!inFs) {
     // Try container fullscreen first (preserves overlays)
     if (wrap && wrap.requestFullscreen) {
       wrap.requestFullscreen().catch(() => {
@@ -4015,8 +4547,13 @@ $('btn-fullscreen').addEventListener('click', () => {
       (player.requestFullscreen || player.webkitEnterFullscreen)?.call(player);
     }
   } else {
-    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    exitFullscreenAll();
   }
+});
+
+$('fs-exit-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  exitFullscreenAll();
 });
 
 /* Show/hide controls on tap */
