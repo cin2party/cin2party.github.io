@@ -1482,6 +1482,49 @@
     background: rgba(10, 10, 15, 0.88);
     box-shadow: 0 6px 22px rgba(0,0,0,0.55);
   }
+  /* Double-tap seek indicators (YouTube-style). Each takes the left or
+     right half of the player area and flashes when the user double-taps
+     that side. pointer-events:none so taps fall through to the player. */
+  .seek-flash {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 33;
+    opacity: 0;
+  }
+  .seek-flash.left { left: 0; }
+  .seek-flash.right { right: 0; }
+  .seek-flash-glyph {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 22px;
+    color: #fff;
+    letter-spacing: 0.05em;
+    background: rgba(10, 10, 15, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 14px 20px;
+    border-radius: 999px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
+  .seek-flash.fire {
+    animation: seekFlashFade 0.7s ease forwards;
+  }
+  @keyframes seekFlashFade {
+    0%   { opacity: 0; transform: scale(0.85); }
+    20%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+  .video-wrap:fullscreen .seek-flash,
+  .video-wrap:-webkit-full-screen .seek-flash {
+    z-index: 2147483647;
+  }
+
   /* Exit-fullscreen overlay button. Lives inside .video-wrap so it's still
      painted in fullscreen (siblings of the fullscreen element vanish), and
      only displayed while fullscreen is active. Some Android browsers don't
@@ -1508,10 +1551,22 @@
     -webkit-tap-highlight-color: transparent;
   }
   .fs-exit-btn:active { background: rgba(40, 40, 50, 0.7); }
+  /* In fullscreen the button is laid out but invisible by default. JS
+     toggles `fs-controls-active` on the wrap on tap, fades it in for 5s,
+     and removes the class when the timer expires. pointer-events:none
+     while invisible so the hidden ✕ doesn't catch stray taps. */
   .video-wrap:fullscreen .fs-exit-btn,
   .video-wrap:-webkit-full-screen .fs-exit-btn {
     display: flex;
     z-index: 2147483647;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .video-wrap:fullscreen.fs-controls-active .fs-exit-btn,
+  .video-wrap:-webkit-full-screen.fs-controls-active .fs-exit-btn {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* Unread pill in fullscreen — visible in a corner of the video so the
@@ -1861,6 +1916,15 @@
     <video id="player" playsinline crossorigin="anonymous"></video>
     <div class="loading-overlay" id="video-loading" style="display:none;">
       <div class="spinner"></div>
+    </div>
+    <!-- Double-tap seek indicators (YouTube-style). Inside .video-wrap so
+         they're visible in container fullscreen. pointer-events:none so
+         they never block the player click that drives showControls. -->
+    <div class="seek-flash left" id="seek-flash-left" aria-hidden="true">
+      <span class="seek-flash-glyph">«« 10초</span>
+    </div>
+    <div class="seek-flash right" id="seek-flash-right" aria-hidden="true">
+      <span class="seek-flash-glyph">10초 »»</span>
     </div>
     <!-- Floating chat toasts (visible during playback and fullscreen) -->
     <div class="chat-toasts" id="chat-toasts"></div>
@@ -4586,11 +4650,15 @@ $('fs-exit-btn').addEventListener('click', (e) => {
   exitFullscreenAll();
 });
 
-/* Show/hide controls on tap */
+/* Show/hide controls on tap. Two timers: regular bar hides at 3.5s; the
+   fullscreen exit ✕ stays a bit longer (5s) since it's the only on-screen
+   way out of fullscreen on phones where the system gesture is unreliable. */
 let controlsTimer = null;
+let fsExitTimer = null;
 function showControls() {
   $('theater-top').classList.remove('hidden');
   $('controls').classList.remove('hidden');
+  document.querySelector('.video-wrap')?.classList.add('fs-controls-active');
   clearTimeout(controlsTimer);
   controlsTimer = setTimeout(() => {
     if (!player.paused) {
@@ -4598,8 +4666,51 @@ function showControls() {
       $('controls').classList.add('hidden');
     }
   }, 3500);
+  clearTimeout(fsExitTimer);
+  fsExitTimer = setTimeout(() => {
+    if (!player.paused) {
+      document.querySelector('.video-wrap')?.classList.remove('fs-controls-active');
+    }
+  }, 5000);
 }
-$('player').addEventListener('click', showControls);
+/* Double-tap on the player seeks ±10s YouTube-style: left half = back,
+   right half = forward. Single tap still falls through to showControls.
+   The 300ms window is below the controls auto-hide so the second tap
+   always reaches us. seekBy() drives the existing host-broadcast path —
+   guests calling it self-correct on the next host heartbeat, matching the
+   behavior of the on-screen seek buttons. */
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_RADIUS_PX = 50;
+const DOUBLE_TAP_SEEK_DELTA = 10;
+let _lastTapTime = 0;
+let _lastTapX = 0;
+
+function flashSeekIndicator(side) {
+  const el = side === 'right' ? $('seek-flash-right') : $('seek-flash-left');
+  el.classList.remove('fire');
+  // Force reflow so re-adding the class restarts the animation when the
+  // user double-taps repeatedly.
+  void el.offsetWidth;
+  el.classList.add('fire');
+}
+
+$('player').addEventListener('click', (e) => {
+  const now = Date.now();
+  const dt = now - _lastTapTime;
+  const dx = Math.abs(e.clientX - _lastTapX);
+  if (dt < DOUBLE_TAP_MS && dx < DOUBLE_TAP_RADIUS_PX) {
+    const rect = player.getBoundingClientRect();
+    const isRight = (e.clientX - rect.left) > rect.width / 2;
+    seekBy(isRight ? DOUBLE_TAP_SEEK_DELTA : -DOUBLE_TAP_SEEK_DELTA);
+    flashSeekIndicator(isRight ? 'right' : 'left');
+    showControls(); // active interaction → reset hide timer
+    _lastTapTime = 0; // prevent triple-tap from chaining into another seek
+    return;
+  }
+  _lastTapTime = now;
+  _lastTapX = e.clientX;
+  showControls();
+});
 $('controls').addEventListener('click', (e) => e.stopPropagation());
 $('theater-top').addEventListener('click', (e) => e.stopPropagation());
 showControls();
