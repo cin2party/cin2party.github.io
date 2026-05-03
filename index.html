@@ -3181,20 +3181,24 @@ async function initPeer(isHost) {
   ];
   const iceServers = cloudflareIce ? [...cloudflareIce, ...staticIceServers] : staticIceServers;
   console.log('[peer] iceServers source:', cloudflareIce ? 'Cloudflare TURN + static fallback' : 'static fallback only',
-              `(${iceServers.length} entries) — relay-only mode`,
-              forceRelay ? '(forced via UI/sessionStorage)' : '(default)');
+              `(${iceServers.length} entries) —`,
+              forceRelay ? 'relay-only mode (forced via UI/sessionStorage)' : 'all transports allowed (direct P2P first, TURN as needed)');
 
   state.peer = new Peer(myPeerId, {
     debug: 1,
     config: {
       iceServers,
       iceCandidatePoolSize: 10,
-      // Always force TURN relay. Direct P2P is unreliable behind VPN/CGNAT
-      // and the latency cost (~50-100ms) is imperceptible for async voice
-      // chat. The relay-mode checkbox in the UI now toggles between two
-      // already-relayed modes — kept for future re-enablement of direct P2P
-      // but its setting no longer changes ICE policy.
-      iceTransportPolicy: 'relay',
+      // Relay forced ONLY when forceRelay is true (UI checkbox or autoRelay
+      // sessionStorage). Briefly tried unconditionally on 2026-05-03 but it
+      // caused intermittent guest connection failures: when the Cloudflare
+      // TURN worker cold-started, the guest's 5s fetch aborted and the
+      // guest had only openrelay candidates — relay-only with one flaky
+      // TURN provider = silent ICE failure and no fallback to direct P2P.
+      // Reverted to conditional. NordVPN users still get relay by checking
+      // the UI checkbox; everyone else gets the full ICE candidate set
+      // including direct/STUN paths, with TURN as a natural fallback.
+      ...(forceRelay ? { iceTransportPolicy: 'relay' } : {})
     }
   });
 
