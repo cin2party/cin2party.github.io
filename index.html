@@ -4016,6 +4016,21 @@ function handleData(fromId, data) {
             state.hostLastSeen = Date.now();
             startHostWatchdog();
           }
+          // On isChange we have to tear down the previous movie before
+          // loadVideo or its "src already set" guard refuses the reload,
+          // and the suspicious-reset detector would yank the new movie's
+          // 0 start back to the previous movie's near-end time. See the
+          // matching block in advanceToQueuedFile for the full rationale.
+          if (isChange) {
+            const playerEl = $('player');
+            playerEl.src = '';
+            state.videoUrl = null;
+            if (state.videoBlobUrl) {
+              try { URL.revokeObjectURL(state.videoBlobUrl); } catch (e) {}
+              state.videoBlobUrl = null;
+            }
+            lastKnownTime = 0;
+          }
           loadVideo();
         }
       }
@@ -5039,6 +5054,32 @@ async function advanceToQueuedFile() {
   state.queuedFile = null;
   refreshQueueUI();
   saveHostSession();
+
+  // Tear down the previous movie BEFORE calling loadVideo. Three
+  // collisions to avoid otherwise:
+  //
+  //   1. loadVideo() has a strict guard that bails when player.src is
+  //      already set + state.videoUrl is set. It exists to prevent
+  //      accidental reloads on visibilitychange / new-guest events. The
+  //      auto-transition is a legitimate reload — defuse the guard by
+  //      clearing the inputs it checks.
+  //   2. The suspicious-reset detector (line ~4651) restores lastKnownTime
+  //      when player.currentTime drops to 0 unexpectedly. The new movie
+  //      legitimately starts at 0 — without resetting lastKnownTime, the
+  //      detector yanks the player back to the previous movie's near-end
+  //      timestamp every time the new movie tries to play.
+  //   3. The previous movie's blob URL leaks if not revoked here.
+  //
+  // Subtitle <track> elements accumulate across transitions; tolerated
+  // for now (browser ignores mismatched tracks, no crash).
+  player.src = '';
+  state.videoUrl = null;
+  if (state.videoBlobUrl) {
+    try { URL.revokeObjectURL(state.videoBlobUrl); } catch (e) {}
+    state.videoBlobUrl = null;
+  }
+  lastKnownTime = 0;
+
   // Re-broadcast the new movie via the existing 'movie-info' shape so
   // guests pick it up via the same handler that powers initial join.
   broadcast({
