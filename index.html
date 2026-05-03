@@ -4642,7 +4642,17 @@ $('progress-track').addEventListener('click', (e) => {
   const rect = e.currentTarget.getBoundingClientRect();
   const ratio = (e.clientX - rect.left) / rect.width;
   if (player.duration) {
-    userSeek(ratio * player.duration);
+    // Optimistic UI: paint the new slider position + time text immediately
+    // so the click feels instant, even while the video element is still
+    // buffering toward the new time. The natural timeupdate handler will
+    // resync from player.currentTime once the seek lands — and since we
+    // jumped the bar to where it'll end up, there's no visible rewind.
+    const pct = Math.max(0, Math.min(100, ratio * 100));
+    const targetTime = ratio * player.duration;
+    $('progress-fill').style.width = pct + '%';
+    $('progress-thumb').style.left = pct + '%';
+    $('time-text').textContent = `${fmtTime(targetTime)} / ${fmtTime(player.duration)}`;
+    userSeek(targetTime);
   }
 });
 
