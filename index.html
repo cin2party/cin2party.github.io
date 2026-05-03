@@ -4524,6 +4524,11 @@ function handleRemoteSync(data) {
   const forceSeek = !!state.recoveringFromBackground;
   const threshold = forceSeek ? 0.3 : 1.5;
 
+  // Capture pre-change state so the toast below reflects what actually
+  // changed (after the suppressSyncFor block, player.paused has flipped).
+  const wasPaused = player.paused;
+  const myTime = player.currentTime;
+
   suppressSyncFor(() => {
     if (Math.abs(player.currentTime - targetTime) > threshold) {
       console.log('[sync] seek to', targetTime.toFixed(2), forceSeek ? '(forced after background)' : '');
@@ -4554,6 +4559,36 @@ function handleRemoteSync(data) {
       console.log('[sync] caught up after background');
     }
   });
+
+  // Surface host actions so the guest understands why playback jumped.
+  // Skipped during forceSeek (background catch-up = automatic, not a host
+  // action) and for sub-threshold drift corrections (no visible change).
+  if (!forceSeek) notifyHostAction(data, targetTime, myTime, wasPaused);
+}
+
+// Toast a Korean description of the host's playback action. Called from
+// handleRemoteSync only — we never see our own broadcasts (broadcast()
+// excludes self) so no isHost guard needed here.
+function notifyHostAction(data, targetTime, myTime, wasPaused) {
+  if (data.action === 'seek') {
+    const delta = targetTime - myTime;
+    const absDelta = Math.abs(delta);
+    // Below the seek threshold the player wasn't actually moved, so a
+    // toast would mislead. 1.5s matches the threshold in handleRemoteSync.
+    if (absDelta < 1.5) return;
+    if (absDelta < 60) {
+      // Small jump: relative ("앞으로 10초"). Round to whole seconds.
+      const dir = delta > 0 ? '⏩ 앞으로' : '⏪ 뒤로';
+      toast(`${dir} ${Math.round(absDelta)}초 (호스트)`);
+    } else {
+      // Big jump (e.g. progress-bar drag): absolute timestamp.
+      toast(`⏩ ${fmtTime(targetTime)} 위치로 이동 (호스트)`);
+    }
+  } else if (data.action === 'play' && wasPaused) {
+    toast('▶️ 호스트가 재생');
+  } else if (data.action === 'pause' && !wasPaused) {
+    toast('⏸️ 호스트가 일시정지');
+  }
 }
 
 // Show tap-to-resume overlay when mobile autoplay is blocked
