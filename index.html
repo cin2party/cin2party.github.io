@@ -1615,6 +1615,149 @@
     to   { opacity: 0; transform: translateY(-6px); }
   }
 
+  /* ========== QUEUE NEXT MOVIE ==========
+     Host queues a next movie via the .queue-sheet bottom panel. The
+     .queue-indicator pill (visible to all peers) lives in .video-wrap so
+     it stays on top in fullscreen. .host-only is a generic utility used
+     by the queue button; .is-guest body class hides any host-only chrome
+     for non-host peers. */
+  .host-only { display: inline-flex; }
+  body.is-guest .host-only { display: none !important; }
+  #btn-queue { position: relative; }
+  .queue-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent, #ff5722);
+    box-shadow: 0 0 0 2px rgba(20, 20, 30, 0.9);
+  }
+  .queue-indicator {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 12px;
+    z-index: 5;
+    pointer-events: none;
+    max-width: 60vw;
+  }
+  .queue-indicator-label { color: rgba(255, 255, 255, 0.55); margin-right: 2px; }
+  .queue-indicator-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    font-weight: 500;
+  }
+  .video-wrap:fullscreen .queue-indicator,
+  .video-wrap:-webkit-full-screen .queue-indicator {
+    z-index: 2147483646;
+  }
+
+  /* Slide-up bottom sheet for queue file picker */
+  .queue-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+  }
+  .queue-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    animation: fadeIn 200ms ease-out;
+  }
+  .queue-sheet-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 80dvh;
+    max-height: 80vh;
+    background: var(--bg, #0a0a0f);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+    animation: queueSheetUp 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes queueSheetUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .queue-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .queue-sheet-title {
+    flex: 1;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    color: #fff;
+  }
+  .queue-sheet-current {
+    padding: 10px 14px;
+    background: rgba(255, 87, 34, 0.10);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .queue-sheet-current strong {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn-tiny {
+    padding: 5px 12px;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-tiny:hover { background: rgba(255, 255, 255, 0.1); }
+  .queue-sheet-crumbs {
+    padding: 8px 14px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+  .queue-sheet-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Loading spinner */
   .spinner {
     width: 32px; height: 32px;
@@ -1935,6 +2078,13 @@
     </button>
     <!-- Unread chat pill, only shown in fullscreen when there are unseen msgs -->
     <button class="fs-unread-pill" id="fs-unread-pill" type="button" aria-label="새 메시지">💬 <span id="fs-unread-pill-count">0</span></button>
+    <!-- Queue indicator: shown to all peers when host has queued a next
+         movie. Lives inside .video-wrap so it stays visible during fullscreen. -->
+    <div class="queue-indicator" id="queue-indicator" hidden>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9M16 14l5 4-5 4"/></svg>
+      <span class="queue-indicator-label">다음:</span>
+      <span class="queue-indicator-name" id="queue-indicator-name"></span>
+    </div>
     <!-- Push-to-talk corner zone. Lives inside .video-wrap so it stays
          visible in fullscreen (siblings of the fullscreen element vanish). -->
     <button class="ptt-zone" id="ptt-zone" type="button" aria-label="누르고 있는 동안 말하기">
@@ -1973,6 +2123,12 @@
       </button>
       <span class="time-text" id="time-text">00:00 / 00:00</span>
       <div class="spacer"></div>
+      <button class="icon-btn host-only" id="btn-queue" title="다음 영화 큐">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h13M3 12h13M3 18h9M16 14l5 4-5 4"/>
+        </svg>
+        <span class="queue-dot" id="queue-dot" hidden></span>
+      </button>
       <button class="icon-btn" id="btn-volume" title="볼륨 조절">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
       </button>
@@ -2152,6 +2308,30 @@
   </div>
 </div>
 
+<!-- Queue sheet: slide-up bottom sheet for picking the next movie. Reuses
+     davList for fetching but keeps its own browse stack so navigating in
+     here doesn't disturb the main file picker's state. Host-only via JS. -->
+<div class="queue-sheet" id="queue-sheet" hidden>
+  <div class="queue-sheet-backdrop" id="queue-sheet-backdrop"></div>
+  <div class="queue-sheet-panel">
+    <div class="queue-sheet-header">
+      <button class="icon-btn" id="btn-queue-up" title="상위 폴더" hidden>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="queue-sheet-title">다음 영화 선택</div>
+      <button class="icon-btn" id="btn-queue-close" title="닫기">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="queue-sheet-current" id="queue-sheet-current" hidden>
+      <span>큐: </span><strong id="queue-sheet-current-name"></strong>
+      <button class="btn-tiny" id="btn-queue-clear">취소</button>
+    </div>
+    <div class="queue-sheet-crumbs" id="queue-crumbs"></div>
+    <div class="queue-sheet-list" id="queue-list"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2165,6 +2345,15 @@ const state = {
   currentPath: '/',
   pathStack: ['/'],
   selectedFile: null,
+  // Host-authoritative "next movie" — auto-loaded when current movie ends.
+  // Mirrored to all peers via 'queued-movie' message so they can show the
+  // indicator pill. Re-broadcast as 'movie-info' on auto-transition.
+  queuedFile: null,
+  // Browse stack for the queue picker — independent from main browser's
+  // currentPath/pathStack so navigating in the queue sheet doesn't reset
+  // the main file picker if the user goes back to it.
+  queueBrowsePath: '/',
+  queueBrowseStack: [],
   roomCode: null,
   isHost: false,
   hostId: null,               // current host peerId (for everyone, including host themselves)
@@ -2477,6 +2666,8 @@ function saveHostSession() {
       roomCode: state.roomCode,
       dav: state.dav,
       selectedFile: state.selectedFile,
+      // queuedFile may be null — that's fine, we just restore null.
+      queuedFile: state.queuedFile || null,
       myName: state.myName,
       savedAt: Date.now()
     }));
@@ -2518,6 +2709,9 @@ async function resumeAsHost(saved) {
   // Restore state from the saved session and reclaim the deterministic peer ID.
   state.dav = saved.dav;
   state.selectedFile = saved.selectedFile;
+  // Restore queuedFile if persisted — guests will get the indicator on
+  // first connect via the saveHostSession + queued-movie message paths.
+  state.queuedFile = saved.queuedFile || null;
   state.myName = saved.myName || '호스트';
   state.roomCode = saved.roomCode;
   state.isHost = true;
@@ -3378,6 +3572,12 @@ function setupConnection(conn) {
         conn.send({ type: 'request-guest-time' });
       }
 
+      // If I have a queued next movie, tell this new joiner so the
+      // indicator shows on their screen too.
+      if (state.isHost && state.queuedFile) {
+        conn.send({ type: 'queued-movie', file: state.queuedFile });
+      }
+
       // Tell other peers to connect to this new one (mesh)
       for (const [pid, c] of state.connections) {
         if (pid !== conn.peer && c.open) {
@@ -3704,6 +3904,9 @@ function handleData(fromId, data) {
       state.hostId = data.newHostId;
       state.hostLastSeen = Date.now();
       state.promotionInProgress = false;
+      // Refresh host-only chrome (queue button etc.) — promotion may have
+      // flipped isHost in either direction.
+      applyHostBodyClass();
       addSystemMsg(`🎬 ${data.newHostName}님이 새 호스트가 되었습니다`);
       renderParticipants();
       // Update host backup with whatever the new host has
@@ -3795,17 +3998,36 @@ function handleData(fromId, data) {
     case 'movie-info':
       // Always save backup for potential host promotion
       state.hostBackup = { file: data.file, dav: data.dav };
-      // If guest hasn't loaded yet, load now
-      if (!state.isHost && !state.selectedFile) {
-        console.log('[guest] received movie info:', data.file.name);
-        state.selectedFile = data.file;
-        state.dav = data.dav;
-        addSystemMsg(`영화 정보 수신: ${data.file.name}`);
-        // Track current host
-        state.hostId = fromId;
-        state.hostLastSeen = Date.now();
-        startHostWatchdog();
-        loadVideo();
+      if (!state.isHost) {
+        const isInitial = !state.selectedFile;
+        // If host auto-transitioned via the queue, the file.path differs
+        // from what we have. Reload in that case so guests follow.
+        const isChange = state.selectedFile && state.selectedFile.path !== data.file.path;
+        if (isInitial || isChange) {
+          console.log('[guest]', isInitial ? 'received movie info:' : 'host changed movie:', data.file.name);
+          state.selectedFile = data.file;
+          state.dav = data.dav;
+          // Clear our local view of what was queued — auto-transition has consumed it
+          state.queuedFile = null;
+          refreshQueueUI();
+          addSystemMsg(isInitial ? `영화: ${data.file.name}` : `▶ 다음 영화: ${data.file.name}`);
+          if (isInitial) {
+            state.hostId = fromId;
+            state.hostLastSeen = Date.now();
+            startHostWatchdog();
+          }
+          loadVideo();
+        }
+      }
+      break;
+
+    case 'queued-movie':
+      // Only honor from the current host. data.file may be null (cleared).
+      if (fromId !== state.hostId) break;
+      state.queuedFile = data.file || null;
+      refreshQueueUI();
+      if (!state.isHost && data.file) {
+        addSystemMsg(`📋 다음 영화: ${data.file.name}`);
       }
       break;
   }
@@ -4067,6 +4289,10 @@ function updatePeerCount() {
 async function enterTheater() {
   showScreen('theater');
   $('room-code-disp').textContent = state.roomCode;
+  // Drives `.host-only` chrome visibility (e.g. queue button on the
+  // controls bar). Re-applied if isHost flips later via host promotion.
+  applyHostBodyClass();
+  refreshQueueUI();
   updatePeerCount();
   renderParticipants();
 
@@ -4634,6 +4860,220 @@ function showResumeOverlay() {
     }, 200);
   });
 }
+
+/* =====================================================
+   QUEUE NEXT MOVIE
+   Host can pick a follow-up movie via the slide-up sheet. Selection
+   broadcasts as 'queued-movie' so all peers see the indicator. On the
+   current movie's 'ended' event a 3-second cancellable countdown auto-
+   loads the queued file and re-broadcasts as 'movie-info' (same shape
+   as initial host→guest send) so guests follow the transition via the
+   existing handler.
+===================================================== */
+const QUEUE_AUTO_TRANSITION_DELAY_MS = 3000;
+let queueAutoTransitionTimer = null;
+
+function applyHostBodyClass() {
+  // Drives `.host-only` visibility — flips when isHost changes (initial
+  // create vs join, host promotion, host yield).
+  document.body.classList.toggle('is-guest', !state.isHost);
+}
+
+function refreshQueueUI() {
+  const indicator = $('queue-indicator');
+  const dot = $('queue-dot');
+  const sheetCurrent = $('queue-sheet-current');
+  if (state.queuedFile) {
+    indicator.hidden = false;
+    $('queue-indicator-name').textContent = state.queuedFile.name;
+    dot.hidden = false;
+    sheetCurrent.hidden = false;
+    $('queue-sheet-current-name').textContent = state.queuedFile.name;
+  } else {
+    indicator.hidden = true;
+    dot.hidden = true;
+    sheetCurrent.hidden = true;
+  }
+}
+
+async function openQueueSheet() {
+  if (!state.isHost) return;
+  $('queue-sheet').hidden = false;
+  // Start at the path the main browser was last in (or basePath fallback).
+  const startPath = state.currentPath || (state.dav.basePath ? state.dav.basePath + '/' : '/');
+  state.queueBrowsePath = startPath;
+  state.queueBrowseStack = [startPath];
+  await loadQueueDirectory(startPath);
+}
+
+function closeQueueSheet() {
+  $('queue-sheet').hidden = true;
+}
+
+async function loadQueueDirectory(path) {
+  const list = $('queue-list');
+  list.innerHTML = '<div class="empty"><div class="spinner" style="margin: 0 auto 14px;"></div><div>불러오는 중...</div></div>';
+  try {
+    const items = await davList(path);
+    state.queueBrowsePath = path;
+    renderQueueCrumbs(path);
+    renderQueueList(items);
+  } catch (err) {
+    list.innerHTML = `<div class="empty"><div class="em">불러올 수 없습니다</div><div class="sub">${escapeHtml(err.message)}</div></div>`;
+  }
+}
+
+function renderQueueCrumbs(path) {
+  let display = path;
+  if (state.dav.basePath && display.startsWith(state.dav.basePath)) {
+    display = display.slice(state.dav.basePath.length) || '/';
+  }
+  $('queue-crumbs').textContent = display || '/';
+  $('btn-queue-up').hidden = state.queueBrowseStack.length <= 1;
+}
+
+function renderQueueList(items) {
+  const list = $('queue-list');
+  list.innerHTML = '';
+  if (state.queueBrowseStack.length > 1) {
+    const up = document.createElement('div');
+    up.className = 'file-item';
+    up.innerHTML = `
+      <div class="file-icon folder">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </div>
+      <div class="file-meta">
+        <div class="file-name">상위 폴더</div>
+        <div class="file-sub">..</div>
+      </div>
+    `;
+    up.addEventListener('click', () => {
+      state.queueBrowseStack.pop();
+      loadQueueDirectory(state.queueBrowseStack[state.queueBrowseStack.length - 1]);
+    });
+    list.appendChild(up);
+  }
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = '<div class="em">비어있습니다</div>';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const item of items) {
+    const isVideo = item.ext && VIDEO_EXT.includes(item.ext);
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    const iconSvg = item.isDir
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+      : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>';
+    el.innerHTML = `
+      <div class="file-icon ${item.isDir ? 'folder' : (isVideo ? 'video' : '')}">${iconSvg}</div>
+      <div class="file-meta">
+        <div class="file-name">${escapeHtml(item.name)}</div>
+        <div class="file-sub">${item.isDir ? '폴더' : (item.ext ? item.ext.toUpperCase() + ' · ' : '') + fmtSize(item.size)}</div>
+      </div>
+    `;
+    if (!item.isDir && !isVideo) {
+      el.style.opacity = '0.4';
+      el.style.pointerEvents = 'none';
+    }
+    el.addEventListener('click', () => {
+      if (item.isDir) {
+        state.queueBrowseStack.push(item.path);
+        loadQueueDirectory(item.path);
+      } else if (isVideo) {
+        if (state.selectedFile && state.selectedFile.path === item.path) {
+          toast('이미 재생 중인 영화입니다');
+          return;
+        }
+        setQueuedFile(item);
+        toast(`📋 다음 영화 큐: ${item.name}`);
+        closeQueueSheet();
+      }
+    });
+    list.appendChild(el);
+  }
+}
+
+function setQueuedFile(file) {
+  state.queuedFile = file;
+  refreshQueueUI();
+  saveHostSession();
+  broadcast({ type: 'queued-movie', file });
+}
+
+function clearQueuedFile() {
+  state.queuedFile = null;
+  refreshQueueUI();
+  saveHostSession();
+  broadcast({ type: 'queued-movie', file: null });
+}
+
+// Cancellable auto-transition when current movie ends
+function startQueueAutoTransition() {
+  if (queueAutoTransitionTimer) return;
+  if (!state.queuedFile) return;
+  const next = state.queuedFile;
+  toast(`▶ 다음 영화 시작 (${Math.round(QUEUE_AUTO_TRANSITION_DELAY_MS/1000)}초 후): ${next.name}`);
+  queueAutoTransitionTimer = setTimeout(() => {
+    queueAutoTransitionTimer = null;
+    advanceToQueuedFile();
+  }, QUEUE_AUTO_TRANSITION_DELAY_MS);
+}
+
+function cancelQueueAutoTransition() {
+  if (!queueAutoTransitionTimer) return false;
+  clearTimeout(queueAutoTransitionTimer);
+  queueAutoTransitionTimer = null;
+  toast('다음 영화 자동 시작 취소됨');
+  return true;
+}
+
+async function advanceToQueuedFile() {
+  if (!state.queuedFile) return;
+  const next = state.queuedFile;
+  state.selectedFile = next;
+  state.queuedFile = null;
+  refreshQueueUI();
+  saveHostSession();
+  // Re-broadcast the new movie via the existing 'movie-info' shape so
+  // guests pick it up via the same handler that powers initial join.
+  broadcast({
+    type: 'movie-info',
+    file: { name: next.name, path: next.path, size: next.size, ext: next.ext },
+    dav: state.dav,
+  });
+  await loadVideo();
+}
+
+// Auto-transition trigger: only the host advances the queue
+player.addEventListener('ended', () => {
+  if (!state.isHost) return;
+  if (!state.queuedFile) return;
+  startQueueAutoTransition();
+});
+
+// Wire up sheet UI
+$('btn-queue').addEventListener('click', () => {
+  // Click during the 3s countdown cancels the auto-transition (safety
+  // valve if user wants to swap the queued file before it kicks off).
+  if (cancelQueueAutoTransition()) return;
+  openQueueSheet();
+});
+$('btn-queue-close').addEventListener('click', closeQueueSheet);
+$('queue-sheet-backdrop').addEventListener('click', closeQueueSheet);
+$('btn-queue-up').addEventListener('click', () => {
+  if (state.queueBrowseStack.length <= 1) return;
+  state.queueBrowseStack.pop();
+  loadQueueDirectory(state.queueBrowseStack[state.queueBrowseStack.length - 1]);
+});
+$('btn-queue-clear').addEventListener('click', () => {
+  clearQueuedFile();
+  toast('다음 영화 큐 취소됨');
+});
 
 /* === Controls === */
 $('btn-play').addEventListener('click', userTogglePlay);
