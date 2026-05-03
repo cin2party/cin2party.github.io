@@ -1652,6 +1652,11 @@
     pointer-events: none;
     max-width: 60vw;
   }
+  /* Explicit [hidden] override — without this, the display:inline-flex
+     above wins over the user-agent's [hidden] { display: none } rule
+     (equal specificity, author CSS later in cascade). Same for the
+     queue-sheet-current row which has display:flex. */
+  .queue-indicator[hidden] { display: none; }
   .queue-indicator-label { color: rgba(255, 255, 255, 0.55); margin-right: 2px; }
   .queue-indicator-name {
     white-space: nowrap;
@@ -1723,6 +1728,7 @@
     align-items: center;
     gap: 10px;
   }
+  .queue-sheet-current[hidden] { display: none; }
   .queue-sheet-current strong {
     flex: 1;
     white-space: nowrap;
@@ -5088,6 +5094,20 @@ async function advanceToQueuedFile() {
     dav: state.dav,
   });
   await loadVideo();
+
+  // Auto-play. The <video> element doesn't have autoplay, and the queue
+  // transition is initiated by a setTimeout (no fresh user gesture) —
+  // without this, the new movie sits paused on its first frame. play()
+  // queues internally if the video isn't yet at canplay, so we don't
+  // need to wait for the canplay event explicitly.
+  // Browser autoplay policy may still reject if the page has been idle
+  // long enough (rare for an active watch party but possible) — fall
+  // back to the tap-to-resume overlay in that case. The play event
+  // will broadcast 'sync' to guests via the existing play-event hook.
+  player.play().catch((err) => {
+    console.warn('[queue] autoplay blocked on next movie:', err.name, err.message);
+    showResumeOverlay();
+  });
 }
 
 // Auto-transition trigger: only the host advances the queue
