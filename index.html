@@ -3104,6 +3104,40 @@ $('btn-back-browser').addEventListener('click', () => showScreen('browser'));
 /* =====================================================
    ROOM (PeerJS based)
 ===================================================== */
+
+// ───── Cloudflare TURN credential broker ─────────────────────────────────
+// Worker source: cloudflare-turn-worker.js. Mints short-lived (24h) TURN
+// ICE servers via Cloudflare Realtime TURN (1 TB/month free, reliable).
+// We always force iceTransportPolicy: 'relay' below so that even hosts
+// behind VPN/CGNAT can keep voice flowing — at the cost of ~50-100ms
+// added latency per hop, which is unnoticed for async voice chat.
+// If the worker is unreachable, fetchTurnCredentials returns null and
+// initPeer falls back to the static openrelay TURN entries.
+const TURN_WORKER_URL = 'https://cin2party-turn.cin2party.workers.dev';
+
+async function fetchTurnCredentials() {
+  try {
+    const ctrl = new AbortController();
+    // 5s cap — never block room creation on a worker hiccup.
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const resp = await fetch(TURN_WORKER_URL, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!resp.ok) {
+      console.warn('[turn] worker returned HTTP', resp.status);
+      return null;
+    }
+    const data = await resp.json();
+    if (!Array.isArray(data.iceServers)) {
+      console.warn('[turn] worker response missing iceServers array:', data);
+      return null;
+    }
+    return data.iceServers;
+  } catch (e) {
+    console.warn('[turn] worker fetch failed:', e.name, e.message || e);
+    return null;
+  }
+}
+
 $('btn-create-room').addEventListener('click', async () => {
   state.isHost = true;
   state.roomCode = genRoomCode();
@@ -3128,39 +3162,39 @@ async function initPeer(isHost) {
   const autoRelay = sessionStorage.getItem('cineparty.autoRelay') === 'true';
   const forceRelay = useRelayOnly || autoRelay;
 
-  if (forceRelay) {
-    console.log('[peer] using relay-only mode (TURN forced)');
-  }
+  // Try Cloudflare TURN credentials first (better reliability, 1TB/mo free).
+  // If worker is unreachable, fall back to static iceServers — never block
+  // room creation on this. The static entries below also provide raw STUN
+  // for any future direct-P2P toggle.
+  const cloudflareIce = await fetchTurnCredentials();
+  const staticIceServers = [
+    // STUN — currently moot since iceTransportPolicy is 'relay', but kept
+    // so the entries are present if relay-mode is ever made conditional again.
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    // openrelay TURN — fallback when Cloudflare is down. Public credentials
+    // are documented as safe to embed by the openrelay project.
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  ];
+  const iceServers = cloudflareIce ? [...cloudflareIce, ...staticIceServers] : staticIceServers;
+  console.log('[peer] iceServers source:', cloudflareIce ? 'Cloudflare TURN + static fallback' : 'static fallback only',
+              `(${iceServers.length} entries) — relay-only mode`,
+              forceRelay ? '(forced via UI/sessionStorage)' : '(default)');
 
   state.peer = new Peer(myPeerId, {
     debug: 1,
     config: {
-      iceServers: [
-        // Public STUN servers (free, fast, but won't work behind symmetric NAT / strict firewalls)
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' },
-        // Public TURN servers (Open Relay, free) — used as fallback when STUN fails
-        // These are publicly known credentials so safe to embed
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ],
+      iceServers,
       iceCandidatePoolSize: 10,
-      // When relay is forced, only use TURN (no direct P2P attempt). Critical for VPN/strict NAT.
-      ...(forceRelay ? { iceTransportPolicy: 'relay' } : {})
+      // Always force TURN relay. Direct P2P is unreliable behind VPN/CGNAT
+      // and the latency cost (~50-100ms) is imperceptible for async voice
+      // chat. The relay-mode checkbox in the UI now toggles between two
+      // already-relayed modes — kept for future re-enablement of direct P2P
+      // but its setting no longer changes ICE policy.
+      iceTransportPolicy: 'relay',
     }
   });
 
@@ -3230,7 +3264,10 @@ async function initPeer(isHost) {
   });
 
   state.peer.on('error', (err) => {
-    console.error('Peer error:', err);
+    // Always log full error object — message+stack often has detail that
+    // err.type alone hides (e.g. WebRTC ICE failures vs broker errors).
+    console.error('[peer.error]', err.type, '|', err.message || '', err);
+
     // Resume-host flow: don't surface unavailable-id as a user error — the
     // stale PeerJS registration takes up to ~60s to clear. Hand back to
     // resumeAsHost's retry loop instead.
@@ -3239,20 +3276,34 @@ async function initPeer(isHost) {
       state.resumeRetry.onUnavailableId();
       return;
     }
-    let msg;
-    if (err.type === 'unavailable-id') {
-      msg = '이미 사용 중인 방 코드입니다. 다시 시도해주세요.';
-    } else if (err.type === 'peer-unavailable') {
-      msg = '방을 찾을 수 없습니다. 코드를 확인해주세요.';
-    } else {
-      msg = '연결 오류: ' + err.type;
-    }
+    // Mapped messages — granular so users (and we, debugging from a
+    // screenshot) can tell broker issues from network issues from
+    // misconfiguration.
+    const errorMessages = {
+      'unavailable-id':       '이미 사용 중인 방 코드입니다. 다시 시도해주세요.',
+      'peer-unavailable':     '방을 찾을 수 없습니다. 코드를 확인해주세요.',
+      'network':              'PeerJS 서버에 연결할 수 없습니다 (네트워크 오류).',
+      'server-error':         'PeerJS 서버 오류 (server-error). 잠시 후 다시 시도해 주세요.',
+      'socket-error':         'PeerJS 서버 소켓 끊김. 네트워크/방화벽 점검.',
+      'socket-closed':        'PeerJS 서버 연결 종료됨.',
+      'disconnected':         'PeerJS 서버 연결 해제됨. 자동 재연결 중...',
+      'browser-incompatible': '이 브라우저는 WebRTC 미지원입니다.',
+      'invalid-id':           '방 코드 형식 오류.',
+      'invalid-key':          'PeerJS API 키 오류.',
+      'webrtc':               'WebRTC 협상 실패 (방화벽/VPN 의심).',
+      'ssl-unavailable':      'HTTPS 환경 필요 (현재 HTTP에선 동작 불가).',
+    };
+    const msg = errorMessages[err.type] || `연결 오류 [${err.type}]: ${err.message || ''}`;
     setStatus(statusEl, msg, 'error');
     if (isHost) $('btn-create-room').disabled = false;
     else $('btn-guest-join').disabled = false;
   });
 
   state.peer.on('disconnected', () => {
+    // Broker connection lost (NOT peer-to-peer). Existing DataChannels and
+    // media calls can keep flowing peer-to-peer; only NEW calls/connections
+    // need the broker. Reconnect is automatic.
+    console.warn('[peer.disconnected] broker dropped — reconnecting');
     toast('연결이 끊어졌습니다. 재연결 시도 중...');
     state.peer.reconnect();
   });
@@ -3360,6 +3411,40 @@ function setupCall(call) {
     removeRemoteAudio(call.peer);
     state.calls.delete(call.peer);
   });
+
+  // ICE state monitor — surfaces network-change failures (VPN toggle,
+  // WiFi/LTE switch) and attempts auto-recovery. Without this, a stale
+  // candidate pair leaves the mic indicator blinking locally while no
+  // RTP reaches the peer; user sees no error and no auto-fix.
+  const pc = call.peerConnection;
+  if (pc) {
+    pc.addEventListener('iceconnectionstatechange', () => {
+      const s = pc.iceConnectionState;
+      console.log('[ice]', call.peer, '→', s);
+      if (s === 'disconnected' || s === 'failed') {
+        // Grace period — ICE 'disconnected' is often transient (a few
+        // packets lost on cell→wifi handoff) and self-heals to 'connected'
+        // within ~2s. Only restart if we're still broken after that.
+        setTimeout(() => {
+          if (pc.iceConnectionState !== 'disconnected' && pc.iceConnectionState !== 'failed') return;
+          if (state.calls.get(call.peer) !== call) return;  // already replaced
+          console.warn('[ice] restart for', call.peer, '— closing stale call and reissuing');
+          try { call.close(); } catch (e) {}
+          state.calls.delete(call.peer);
+          // Re-issue only if the peer is still in the room (DataChannel up)
+          // and our mic is on — otherwise nothing to send.
+          if (state.micStream && state.connections.has(call.peer)) {
+            try {
+              const newCall = state.peer.call(call.peer, state.micStream);
+              if (newCall) setupCall(newCall);
+            } catch (e) {
+              console.error('[ice] restart peer.call failed:', e);
+            }
+          }
+        }, 3000);
+      }
+    });
+  }
 }
 
 function addRemoteAudio(peerId, stream) {
