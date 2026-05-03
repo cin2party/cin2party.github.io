@@ -5024,11 +5024,11 @@ function startQueueAutoTransition() {
   }, QUEUE_AUTO_TRANSITION_DELAY_MS);
 }
 
-function cancelQueueAutoTransition() {
+function cancelQueueAutoTransition({ silent = false } = {}) {
   if (!queueAutoTransitionTimer) return false;
   clearTimeout(queueAutoTransitionTimer);
   queueAutoTransitionTimer = null;
-  toast('다음 영화 자동 시작 취소됨');
+  if (!silent) toast('다음 영화 자동 시작 취소됨');
   return true;
 }
 
@@ -6546,6 +6546,16 @@ function cleanup() {
   state.selectedFile = null;
   state.isHost = false;
   state.hostId = null;
+  // Queue cleanup: defuse any in-flight 3s auto-transition timer (would
+  // otherwise fire against next-session state and corrupt selectedFile),
+  // clear queue state, and reset host-only chrome visibility for when
+  // the user re-enters the lobby and creates a new room. silent: true
+  // because cleanup() runs on btn-leave and beforeunload — a "auto-
+  // start cancelled" toast there would just be noise.
+  cancelQueueAutoTransition({ silent: true });
+  state.queuedFile = null;
+  refreshQueueUI();
+  applyHostBodyClass();
   state.myJoinTime = null;
   state.knownPeers.clear();
   state.hostBackup = null;
