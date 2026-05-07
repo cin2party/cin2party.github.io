@@ -1665,9 +1665,19 @@
     max-width: 200px;
     font-weight: 500;
   }
+  /* In fullscreen the queue pill follows the same tap-to-reveal pattern as
+     the fs-exit ✕ — invisible by default, fades in when `fs-controls-active`
+     is on the wrap (set by showControls()), fades out when the timer
+     expires. Off-fullscreen it's always visible (no opacity rule applies). */
   .video-wrap:fullscreen .queue-indicator,
   .video-wrap:-webkit-full-screen .queue-indicator {
     z-index: 2147483646;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .video-wrap:fullscreen.fs-controls-active .queue-indicator,
+  .video-wrap:-webkit-full-screen.fs-controls-active .queue-indicator {
+    opacity: 1;
   }
 
   /* Slide-up bottom sheet for queue file picker */
@@ -5285,8 +5295,10 @@ $('fs-exit-btn').addEventListener('click', (e) => {
 });
 
 /* Show/hide controls on tap. Two timers: regular bar hides at 3.5s; the
-   fullscreen exit ✕ stays a bit longer (5s) since it's the only on-screen
-   way out of fullscreen on phones where the system gesture is unreliable. */
+   fullscreen overlays (exit ✕ and the queued-next pill) stay a bit longer
+   (10s) since the ✕ is the only on-screen way out of fullscreen on phones
+   where the system gesture is unreliable, and the queued-next pill is
+   informational so the viewer should have time to read it. */
 let controlsTimer = null;
 let fsExitTimer = null;
 function showControls() {
@@ -5305,7 +5317,7 @@ function showControls() {
     if (!player.paused) {
       document.querySelector('.video-wrap')?.classList.remove('fs-controls-active');
     }
-  }, 5000);
+  }, 10000);
 }
 /* Double-tap on the player seeks ±10s YouTube-style: left half = back,
    right half = forward. Single tap still falls through to showControls.
