@@ -1811,15 +1811,42 @@
 
   /* SVG icons inherit color */
   svg { display: block; }
+
+  /* Language toggle (lobby + volume menu) */
+  .lang-toggle {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0) + 12px);
+    right: 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    z-index: 5;
+  }
+  .lang-toggle:hover { color: var(--ink); border-color: var(--accent); }
+  .volume-menu .lang-toggle {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+    text-align: center;
+    padding: 8px 10px;
+  }
 </style>
 </head>
 <body>
 
 <!-- ============ LOBBY ============ -->
 <section id="lobby" class="screen active">
+  <button class="lang-toggle" id="btn-lang" type="button" aria-label="Language">EN</button>
   <div class="marquee">
     <div class="label">Now Showing</div>
-    <h1>씨네 파티<em>cinema · together</em></h1>
+    <h1><span data-i18n="lobby.marqueeTitle">씨네 파티</span><em data-i18n="lobby.marqueeItalic">cinema · together</em></h1>
     <div class="sub">WEBDAV · WATCH · CHAT · TALK</div>
   </div>
 
@@ -1829,18 +1856,18 @@
   <div class="panel" id="resume-panel" style="display:none;">
     <div class="panel-head">
       <span class="ticket">↩︎</span>
-      <h2>이전 방으로 복귀</h2>
+      <h2 data-i18n="resume.title">이전 방으로 복귀</h2>
     </div>
     <div class="panel-body">
       <div style="margin-bottom: 14px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 13px; color: var(--ink-dim); line-height: 1.5;">
         <div style="color: var(--ink); font-weight: 600; margin-bottom: 4px;" id="resume-movie-name">—</div>
-        <div>방 코드: <span id="resume-room-code" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+        <div><span data-i18n="resume.roomCodeLabel">방 코드:</span> <span id="resume-room-code" style="font-family:'JetBrains Mono',monospace;">—</span></div>
       </div>
       <button id="btn-resume-host" class="btn btn-primary btn-block">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-        🔁 호스트로 복귀
+        <span data-i18n="resume.btnResume">🔁 호스트로 복귀</span>
       </button>
-      <button id="btn-resume-forget" class="btn btn-ghost" style="margin-top: 8px;">
+      <button id="btn-resume-forget" class="btn btn-ghost" style="margin-top: 8px;" data-i18n="resume.btnForget">
         🗑 잊어버리기 (저장된 자격증명 삭제)
       </button>
       <div id="resume-status" class="status-line" style="margin-top: 8px;"></div>
@@ -1851,19 +1878,19 @@
   <div class="panel" id="role-panel">
     <div class="panel-head">
       <span class="ticket">01</span>
-      <h2>어떻게 시작할까요?</h2>
+      <h2 data-i18n="role.title">어떻게 시작할까요?</h2>
     </div>
     <div class="panel-body">
       <button id="btn-role-host" class="btn btn-primary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        호스트 (영화 고르고 방 만들기)
+        <span data-i18n="role.host">호스트 (영화 고르고 방 만들기)</span>
       </button>
       <div class="divider">OR</div>
       <button id="btn-role-guest" class="btn btn-ghost">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-3-3M19 11l3-3"/></svg>
-        게스트 (방 코드로 참여)
+        <span data-i18n="role.guest">게스트 (방 코드로 참여)</span>
       </button>
-      <div style="margin-top: 14px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 12px; color: var(--ink-dim); line-height: 1.5;">
+      <div style="margin-top: 14px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 12px; color: var(--ink-dim); line-height: 1.5;" data-i18n="role.hint" data-i18n-html>
         💡 <b>호스트</b>는 WebDAV 정보가 필요해요.<br>
         <b>게스트</b>는 방 코드만 있으면 돼요.
       </div>
@@ -1874,50 +1901,50 @@
   <div class="panel" id="host-panel" style="display:none;">
     <div class="panel-head">
       <span class="ticket">01</span>
-      <h2>WebDAV 서버 연결 (호스트)</h2>
+      <h2 data-i18n="host.title">WebDAV 서버 연결 (호스트)</h2>
       <button class="icon-btn" id="btn-back-role" style="margin-left:auto; width:30px; height:30px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="panel-body">
       <div class="field">
-        <label>워커 / 서버</label>
+        <label data-i18n="host.workerLabel">워커 / 서버</label>
         <div class="worker-row">
           <select class="worker-select" id="dav-worker-select">
-            <option value="__direct__">URL 직접 입력</option>
-            <option value="__add__">+ 새 워커 추가…</option>
+            <option value="__direct__" data-i18n="host.workerOptDirect">URL 직접 입력</option>
+            <option value="__add__" data-i18n="host.workerOptAdd">+ 새 워커 추가…</option>
           </select>
-          <button type="button" class="worker-manage-btn" id="btn-manage-workers" title="워커 관리" aria-label="워커 관리">
+          <button type="button" class="worker-manage-btn" id="btn-manage-workers" data-i18n-attr-title="host.workerManage" data-i18n-attr-aria-label="host.workerManage" title="워커 관리" aria-label="워커 관리">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
         </div>
         <!-- Inline "add new worker" mini form, shown when "+ 새 워커 추가" picked -->
         <div class="worker-add-form" id="worker-add-form" style="display:none;">
           <div class="field">
-            <label>이름</label>
-            <input id="worker-add-name" type="text" placeholder="예: Koofr" maxlength="40" autocomplete="off">
+            <label data-i18n="host.addName">이름</label>
+            <input id="worker-add-name" type="text" data-i18n-attr-placeholder="host.addNamePh" placeholder="예: Koofr" maxlength="40" autocomplete="off">
           </div>
           <div class="field">
-            <label>워커 주소 (워커 URL + 워커가 허용하는 경로 prefix)</label>
+            <label data-i18n="host.addUrl">워커 주소 (워커 URL + 워커가 허용하는 경로 prefix)</label>
             <input id="worker-add-url" type="url" inputmode="url" placeholder="https://koofr-proxy.…workers.dev/dav/Koofr" autocomplete="off">
           </div>
           <div class="field">
-            <label>기본 폴더 (선택)</label>
+            <label data-i18n="host.addFolder">기본 폴더 (선택)</label>
             <input id="worker-add-folder" type="text" placeholder="/Movies" autocomplete="off">
           </div>
           <div class="actions">
-            <button type="button" class="btn btn-ghost" id="btn-worker-add-cancel">취소</button>
-            <button type="button" class="btn btn-primary" id="btn-worker-add-save">추가</button>
+            <button type="button" class="btn btn-ghost" id="btn-worker-add-cancel" data-i18n="host.btnCancel">취소</button>
+            <button type="button" class="btn btn-primary" id="btn-worker-add-save" data-i18n="host.btnAdd">추가</button>
           </div>
         </div>
       </div>
 
       <!-- Direct mode: free-text URL -->
       <div class="field" id="dav-url-direct-field">
-        <label>서버 URL</label>
+        <label data-i18n="host.urlLabel">서버 URL</label>
         <div class="input-with-clear">
           <input id="dav-url" type="url" inputmode="url" list="dav-url-list" placeholder="https://your-proxy.workers.dev/path/to/Movies" autocomplete="off">
-          <button type="button" class="input-clear" id="dav-url-clear" tabindex="-1" title="저장된 URL 모두 삭제" aria-label="저장된 URL 모두 삭제">
+          <button type="button" class="input-clear" id="dav-url-clear" tabindex="-1" data-i18n-attr-title="host.urlClearTip" data-i18n-attr-aria-label="host.urlClearTip" title="저장된 URL 모두 삭제" aria-label="저장된 URL 모두 삭제">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>
           </button>
         </div>
@@ -1927,35 +1954,35 @@
 
       <!-- Preset mode: fixed prefix + editable folder suffix -->
       <div class="field" id="dav-folder-field" style="display:none;">
-        <label>폴더 경로</label>
+        <label data-i18n="host.folderLabel">폴더 경로</label>
         <div class="prefix-input">
           <span class="prefix-label" id="dav-prefix-label" title=""></span>
           <input id="dav-folder" type="text" placeholder="/Movies" autocomplete="off">
         </div>
-        <div class="hint">워커의 <code>ALLOWED_PREFIX</code> 안의 경로만 접근 가능해요.</div>
+        <div class="hint" data-i18n="host.folderHint" data-i18n-html>워커의 <code>ALLOWED_PREFIX</code> 안의 경로만 접근 가능해요.</div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label>아이디</label>
-          <input id="dav-user" type="text" list="dav-user-list" autocomplete="off" placeholder="아이디 또는 이메일">
+          <label data-i18n="host.userLabel">아이디</label>
+          <input id="dav-user" type="text" list="dav-user-list" autocomplete="off" data-i18n-attr-placeholder="host.userPh" placeholder="아이디 또는 이메일">
           <datalist id="dav-user-list"></datalist>
         </div>
         <div class="field">
-          <label>비밀번호</label>
+          <label data-i18n="host.passLabel">비밀번호</label>
           <input id="dav-pass" type="password" autocomplete="off" placeholder="••••••••">
         </div>
       </div>
       <div class="field">
-        <label>닉네임</label>
-        <input id="my-name" type="text" autocomplete="off" placeholder="예: 재이" maxlength="20">
+        <label data-i18n="host.nicknameLabel">닉네임</label>
+        <input id="my-name" type="text" autocomplete="off" data-i18n-attr-placeholder="host.nicknamePh" placeholder="예: 재이" maxlength="20">
       </div>
       <label class="checkbox-row" for="host-relay-mode" style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;color:var(--ink-dim);cursor:pointer;">
         <input type="checkbox" id="host-relay-mode" style="margin:0;">
-        <span>VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)</span>
+        <span data-i18n="host.relayLabel">VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)</span>
       </label>
       <button id="btn-connect" class="btn btn-primary btn-block">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-        연결하고 영화 고르기
+        <span data-i18n="host.btnConnect">연결하고 영화 고르기</span>
       </button>
     </div>
     <div id="lobby-status" class="status-line"></div>
@@ -1965,27 +1992,27 @@
   <div class="panel" id="guest-panel" style="display:none;">
     <div class="panel-head">
       <span class="ticket">01</span>
-      <h2>방 참여 (게스트)</h2>
+      <h2 data-i18n="guest.title">방 참여 (게스트)</h2>
       <button class="icon-btn" id="btn-back-role-2" style="margin-left:auto; width:30px; height:30px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="panel-body">
       <div class="field">
-        <label>방 코드</label>
+        <label data-i18n="guest.roomLabel">방 코드</label>
         <input id="guest-code" type="text" inputmode="text" autocapitalize="characters" placeholder="ABC-123" maxlength="10" style="text-transform: uppercase; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.15em; font-size: 22px; text-align: center;">
       </div>
       <div class="field">
-        <label>닉네임</label>
-        <input id="guest-name" type="text" autocomplete="off" placeholder="예: 친구" maxlength="20">
+        <label data-i18n="guest.nicknameLabel">닉네임</label>
+        <input id="guest-name" type="text" autocomplete="off" data-i18n-attr-placeholder="guest.nicknamePh" placeholder="예: 친구" maxlength="20">
       </div>
       <label class="checkbox-row" for="guest-relay-mode" style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;color:var(--ink-dim);cursor:pointer;">
         <input type="checkbox" id="guest-relay-mode" style="margin:0;">
-        <span>VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)</span>
+        <span data-i18n="host.relayLabel">VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)</span>
       </label>
       <button id="btn-guest-join" class="btn btn-primary btn-block">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-3-3M19 11l3-3"/></svg>
-        파티 참여
+        <span data-i18n="guest.btnJoin">파티 참여</span>
       </button>
     </div>
     <div id="guest-status" class="status-line"></div>
@@ -2002,7 +2029,7 @@
     <button class="icon-btn" id="btn-back-lobby">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
     </button>
-    <div class="title">동영상 선택</div>
+    <div class="title" data-i18n="browser.title">동영상 선택</div>
     <button class="icon-btn" id="btn-refresh">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
     </button>
@@ -2017,7 +2044,7 @@
     <button class="icon-btn" id="btn-back-browser">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
     </button>
-    <div class="title">파티 만들기</div>
+    <div class="title" data-i18n="roomSetup.title">파티 만들기</div>
   </div>
 
   <div class="marquee" style="padding: 28px 24px 18px;">
@@ -2029,18 +2056,18 @@
   <div class="panel">
     <div class="panel-head">
       <span class="ticket">02</span>
-      <h2>방 만들기</h2>
+      <h2 data-i18n="roomSetup.panelTitle">방 만들기</h2>
     </div>
     <div class="panel-body">
       <button id="btn-create-room" class="btn btn-primary btn-block">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-        방 만들고 친구 초대
+        <span data-i18n="roomSetup.btnCreate">방 만들고 친구 초대</span>
       </button>
     </div>
     <div id="room-status" class="status-line"></div>
   </div>
 
-  <div style="padding: 0 24px 24px; color: var(--ink-low); font-size: 12px; line-height: 1.6;">
+  <div style="padding: 0 24px 24px; color: var(--ink-low); font-size: 12px; line-height: 1.6;" data-i18n="roomSetup.hint" data-i18n-html>
     💡 방이 만들어지면 방 코드가 표시됩니다.<br>
     그 코드를 친구에게 공유하세요. 친구는 게스트로 참여하면 자동으로 같은 영화가 재생됩니다.
   </div>
@@ -2052,10 +2079,10 @@
     <div class="room-badge">
       <div class="pulse-dot"></div>
       <div class="room-code" id="room-code-disp">—</div>
-      <div class="peer-count" id="peer-count">1명</div>
+      <div class="peer-count" id="peer-count">1</div>
     </div>
     <div class="top-actions">
-      <button class="icon-btn" id="btn-mic" title="마이크">
+      <button class="icon-btn" id="btn-mic" data-i18n-attr-title="theater.btnMic" title="마이크">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
       </button>
       <button class="icon-btn" id="btn-people">
@@ -2080,30 +2107,30 @@
          they're visible in container fullscreen. pointer-events:none so
          they never block the player click that drives showControls. -->
     <div class="seek-flash left" id="seek-flash-left" aria-hidden="true">
-      <span class="seek-flash-glyph">«« 10초</span>
+      <span class="seek-flash-glyph" data-i18n="theater.seekBack">«« 10초</span>
     </div>
     <div class="seek-flash right" id="seek-flash-right" aria-hidden="true">
-      <span class="seek-flash-glyph">10초 »»</span>
+      <span class="seek-flash-glyph" data-i18n="theater.seekFwd">10초 »»</span>
     </div>
     <!-- Floating chat toasts (visible during playback and fullscreen) -->
     <div class="chat-toasts" id="chat-toasts"></div>
     <!-- Exit-fullscreen button, only shown while fullscreen is active.
          Inside .video-wrap so it stays visible during fullscreen. -->
-    <button class="fs-exit-btn" id="fs-exit-btn" type="button" aria-label="전체화면 종료" title="전체화면 종료">
+    <button class="fs-exit-btn" id="fs-exit-btn" type="button" data-i18n-attr-title="theater.fsExit" data-i18n-attr-aria-label="theater.fsExit" aria-label="전체화면 종료" title="전체화면 종료">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <!-- Unread chat pill, only shown in fullscreen when there are unseen msgs -->
-    <button class="fs-unread-pill" id="fs-unread-pill" type="button" aria-label="새 메시지">💬 <span id="fs-unread-pill-count">0</span></button>
+    <button class="fs-unread-pill" id="fs-unread-pill" type="button" data-i18n-attr-aria-label="theater.unread" aria-label="새 메시지">💬 <span id="fs-unread-pill-count">0</span></button>
     <!-- Queue indicator: shown to all peers when host has queued a next
          movie. Lives inside .video-wrap so it stays visible during fullscreen. -->
     <div class="queue-indicator" id="queue-indicator" hidden>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9M16 14l5 4-5 4"/></svg>
-      <span class="queue-indicator-label">다음:</span>
+      <span class="queue-indicator-label" data-i18n="theater.queueLabel">다음:</span>
       <span class="queue-indicator-name" id="queue-indicator-name"></span>
     </div>
     <!-- Push-to-talk corner zone. Lives inside .video-wrap so it stays
          visible in fullscreen (siblings of the fullscreen element vanish). -->
-    <button class="ptt-zone" id="ptt-zone" type="button" aria-label="누르고 있는 동안 말하기">
+    <button class="ptt-zone" id="ptt-zone" type="button" data-i18n-attr-aria-label="theater.pttZone" aria-label="누르고 있는 동안 말하기">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
         <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -2121,7 +2148,7 @@
       <div class="progress-thumb" id="progress-thumb"></div>
     </div>
     <div class="control-row">
-      <button class="icon-btn seek-btn" id="btn-seek-back" type="button" title="뒤로 (탭 10초 / 길게 60초)" aria-label="뒤로 — 탭 10초, 길게 누르면 60초">
+      <button class="icon-btn seek-btn" id="btn-seek-back" type="button" data-i18n-attr-title="theater.btnSeekBackTitle" data-i18n-attr-aria-label="theater.btnSeekBackAria" title="뒤로 (탭 10초 / 길게 60초)" aria-label="뒤로 — 탭 10초, 길게 누르면 60초">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="11 17 6 12 11 7"/>
           <polyline points="18 17 13 12 18 7"/>
@@ -2131,7 +2158,7 @@
         <svg id="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         <svg id="icon-pause" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
       </button>
-      <button class="icon-btn seek-btn" id="btn-seek-fwd" type="button" title="앞으로 (탭 10초 / 길게 60초)" aria-label="앞으로 — 탭 10초, 길게 누르면 60초">
+      <button class="icon-btn seek-btn" id="btn-seek-fwd" type="button" data-i18n-attr-title="theater.btnSeekFwdTitle" data-i18n-attr-aria-label="theater.btnSeekFwdAria" title="앞으로 (탭 10초 / 길게 60초)" aria-label="앞으로 — 탭 10초, 길게 누르면 60초">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="13 17 18 12 13 7"/>
           <polyline points="6 17 11 12 6 7"/>
@@ -2139,19 +2166,19 @@
       </button>
       <span class="time-text" id="time-text">00:00 / 00:00</span>
       <div class="spacer"></div>
-      <button class="icon-btn host-only" id="btn-queue" title="다음 영화 큐">
+      <button class="icon-btn host-only" id="btn-queue" data-i18n-attr-title="theater.btnQueue" title="다음 영화 큐">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 6h13M3 12h13M3 18h9M16 14l5 4-5 4"/>
         </svg>
         <span class="queue-dot" id="queue-dot" hidden></span>
       </button>
-      <button class="icon-btn" id="btn-volume" title="볼륨 조절">
+      <button class="icon-btn" id="btn-volume" data-i18n-attr-title="theater.btnVolume" title="볼륨 조절">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
       </button>
-      <button class="icon-btn" id="btn-subs" title="자막">
+      <button class="icon-btn" id="btn-subs" data-i18n-attr-title="theater.btnSubs" title="자막">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M13 15h4M7 11h2M11 11h6"/></svg>
       </button>
-      <button class="icon-btn" id="btn-fullscreen" title="전체화면">
+      <button class="icon-btn" id="btn-fullscreen" data-i18n-attr-title="theater.btnFullscreen" title="전체화면">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
       </button>
     </div>
@@ -2161,12 +2188,12 @@
   <div class="sub-menu" id="sub-menu">
     <div class="sub-menu-item" id="sub-off">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
-      자막 끄기
+      <span data-i18n="subs.off">자막 끄기</span>
     </div>
     <div class="sep"></div>
     <label class="sub-menu-item" for="sub-file" style="cursor:pointer;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/></svg>
-      자막 파일 추가 (.srt/.vtt)
+      <span data-i18n="subs.add">자막 파일 추가 (.srt/.vtt)</span>
     </label>
     <input id="sub-file" type="file" accept=".srt,.vtt" style="display:none;">
     <div id="sub-list"></div>
@@ -2177,7 +2204,7 @@
     <div class="volume-row">
       <div class="volume-label">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-        <span>영화</span>
+        <span data-i18n="vol.movie">영화</span>
       </div>
       <input type="range" id="vol-movie" min="0" max="100" value="100" class="volume-slider">
       <div class="volume-value" id="vol-movie-val">100</div>
@@ -2185,7 +2212,7 @@
     <div class="volume-row">
       <div class="volume-label">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
-        <span>친구</span>
+        <span data-i18n="vol.voice">친구</span>
       </div>
       <input type="range" id="vol-voice" min="0" max="100" value="100" class="volume-slider">
       <div class="volume-value" id="vol-voice-val">100</div>
@@ -2194,21 +2221,21 @@
     <label class="volume-toggle" for="toggle-vad">
       <input type="checkbox" id="toggle-vad" checked>
       <span class="toggle-track"></span>
-      <span class="toggle-text">
+      <span class="toggle-text" data-i18n="vol.toggleVad">
         🎙️ 자동 마이크 (말할 때만)
       </span>
     </label>
     <label class="volume-toggle" for="toggle-ducking">
       <input type="checkbox" id="toggle-ducking" checked>
       <span class="toggle-track"></span>
-      <span class="toggle-text">
+      <span class="toggle-text" data-i18n="vol.toggleDuck">
         🔉 대화 시 영화 볼륨 자동 감소
       </span>
     </label>
     <label class="volume-toggle" for="toggle-noise-suppress">
       <input type="checkbox" id="toggle-noise-suppress" checked>
       <span class="toggle-track"></span>
-      <span class="toggle-text">
+      <span class="toggle-text" data-i18n="vol.toggleNoise">
         🧹 마이크 노이즈 억제 (하이패스 + 컴프레서)
       </span>
     </label>
@@ -2217,39 +2244,40 @@
       <label class="volume-toggle" for="toggle-phone-mic">
         <input type="checkbox" id="toggle-phone-mic">
         <span class="toggle-track"></span>
-        <span class="toggle-text">
+        <span class="toggle-text" data-i18n="vol.togglePhoneMic">
           📱 폰 내장 마이크 사용 (BT 스테레오 유지)
         </span>
       </label>
       <div class="mic-device-row" id="mic-device-row" style="display:none;">
-        <select id="mic-device-select" class="mic-device-select" aria-label="마이크 장치 선택"></select>
-        <button class="mic-device-refresh" id="mic-device-refresh" type="button" aria-label="장치 목록 새로고침" title="장치 목록 새로고침">⟳</button>
+        <select id="mic-device-select" class="mic-device-select" data-i18n-attr-aria-label="vol.micDeviceSelect" aria-label="마이크 장치 선택"></select>
+        <button class="mic-device-refresh" id="mic-device-refresh" type="button" data-i18n-attr-aria-label="vol.micDeviceRefresh" data-i18n-attr-title="vol.micDeviceRefresh" aria-label="장치 목록 새로고침" title="장치 목록 새로고침">⟳</button>
       </div>
       <div class="mic-device-hint" id="mic-device-hint" style="display:none;"></div>
     </div>
     <div class="volume-divider"></div>
-    <button class="volume-preset" id="vol-preset-balance">
+    <button class="volume-preset" id="vol-preset-balance" data-i18n="vol.presetMovie">
       🎬 영화 우선 (영화 100% / 친구 50%)
     </button>
-    <button class="volume-preset" id="vol-preset-voice">
+    <button class="volume-preset" id="vol-preset-voice" data-i18n="vol.presetVoice">
       💬 대화 우선 (영화 30% / 친구 100%)
     </button>
-    <button class="volume-preset" id="vol-preset-equal">
+    <button class="volume-preset" id="vol-preset-equal" data-i18n="vol.presetEqual">
       ⚖️ 동일 (둘 다 100%)
     </button>
+    <button class="lang-toggle" id="btn-lang-vol" type="button" aria-label="Language">EN</button>
   </div>
 
   <!-- Side panel -->
   <div class="backdrop" id="backdrop"></div>
   <aside class="side-panel" id="side-panel">
     <div class="panel-tabs">
-      <button class="panel-tab active" data-tab="chat">채팅<span class="count" id="tab-msg-count" style="display:none;">0</span></button>
-      <button class="panel-tab" data-tab="people">참여자<span class="count" id="tab-ppl-count">1</span></button>
+      <button class="panel-tab active" data-tab="chat"><span data-i18n="side.tabChat">채팅</span><span class="count" id="tab-msg-count" style="display:none;">0</span></button>
+      <button class="panel-tab" data-tab="people"><span data-i18n="side.tabPeople">참여자</span><span class="count" id="tab-ppl-count">1</span></button>
     </div>
     <div class="panel-content active" data-tab="chat">
       <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-row">
-        <input id="chat-input" type="text" placeholder="메시지 입력..." maxlength="500">
+        <input id="chat-input" type="text" data-i18n-attr-placeholder="side.chatPh" placeholder="메시지 입력..." maxlength="500">
         <button id="btn-send-chat">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
         </button>
@@ -2268,8 +2296,8 @@
 <div class="modal-backdrop" id="share-modal">
   <div class="modal">
     <div class="modal-head">
-      <span class="ticket">초대장</span>
-      <h2>친구 초대하기</h2>
+      <span class="ticket" data-i18n="share.ticket">초대장</span>
+      <h2 data-i18n="share.title">친구 초대하기</h2>
       <button class="close-btn" id="btn-close-share">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -2282,7 +2310,7 @@
 
       <div class="share-link-row">
         <input id="share-link-input" type="text" readonly>
-        <button id="btn-copy-link">복사</button>
+        <button id="btn-copy-link" data-i18n="share.btnCopy">복사</button>
       </div>
 
       <div class="invite-preview" id="invite-preview">—</div>
@@ -2290,15 +2318,15 @@
       <div class="share-btns">
         <button class="share-btn copy" id="btn-share-message">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          <span>메시지 복사</span>
+          <span data-i18n="share.btnMessage">메시지 복사</span>
         </button>
         <button class="share-btn" id="btn-native-share">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          <span>다른 앱으로 공유</span>
+          <span data-i18n="share.btnNative">다른 앱으로 공유</span>
         </button>
       </div>
 
-      <div style="text-align:center; padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em;">
+      <div style="text-align:center; padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em;" data-i18n="share.hint">
         💡 친구가 링크를 누르면 자동으로 입장
       </div>
     </div>
@@ -2309,15 +2337,15 @@
 <div class="modal-backdrop" id="worker-modal">
   <div class="modal">
     <div class="modal-head">
-      <span class="ticket">설정</span>
-      <h2>워커 관리</h2>
-      <button class="close-btn" id="btn-close-worker-modal" aria-label="닫기">
+      <span class="ticket" data-i18n="workerModal.ticket">설정</span>
+      <h2 data-i18n="workerModal.title">워커 관리</h2>
+      <button class="close-btn" id="btn-close-worker-modal" data-i18n-attr-aria-label="workerModal.close" aria-label="닫기">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="modal-body">
       <div id="worker-list"></div>
-      <div style="padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; line-height: 1.5;">
+      <div style="padding-top:8px; font-size: 11px; color: var(--ink-low); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; line-height: 1.5;" data-i18n="workerModal.hint" data-i18n-html>
         💡 새 워커는 위 드롭다운의 <b>+ 새 워커 추가…</b>에서 추가하세요.
       </div>
     </div>
@@ -2331,17 +2359,17 @@
   <div class="queue-sheet-backdrop" id="queue-sheet-backdrop"></div>
   <div class="queue-sheet-panel">
     <div class="queue-sheet-header">
-      <button class="icon-btn" id="btn-queue-up" title="상위 폴더" hidden>
+      <button class="icon-btn" id="btn-queue-up" data-i18n-attr-title="queue.btnUp" title="상위 폴더" hidden>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
-      <div class="queue-sheet-title">다음 영화 선택</div>
-      <button class="icon-btn" id="btn-queue-close" title="닫기">
+      <div class="queue-sheet-title" data-i18n="queue.title">다음 영화 선택</div>
+      <button class="icon-btn" id="btn-queue-close" data-i18n-attr-title="queue.close" title="닫기">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="queue-sheet-current" id="queue-sheet-current" hidden>
-      <span>큐: </span><strong id="queue-sheet-current-name"></strong>
-      <button class="btn-tiny" id="btn-queue-clear">취소</button>
+      <span data-i18n="queue.currentLabel">큐: </span><strong id="queue-sheet-current-name"></strong>
+      <button class="btn-tiny" id="btn-queue-clear" data-i18n="queue.btnCancel">취소</button>
     </div>
     <div class="queue-sheet-crumbs" id="queue-crumbs"></div>
     <div class="queue-sheet-list" id="queue-list"></div>
@@ -2351,6 +2379,565 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* =====================================================
+   I18N — string table + runtime
+
+   Strings are looked up via t('key', {param}). Static HTML elements use
+   data-i18n="key" for textContent, data-i18n-html="key" for innerHTML
+   (when the translation contains markup), and data-i18n-attr-NAME="key"
+   for attributes (placeholder, title, aria-label).
+
+   The default-paint Korean text in HTML is a fallback for the brief
+   moment before applyTranslations() runs; it also means the file
+   remains readable without JS.
+===================================================== */
+const STRINGS = {
+  ko: {
+    'doc.title': '씨네 파티 · WebDAV Watch Party',
+    'lobby.marqueeTitle': '씨네 파티',
+    'lobby.marqueeItalic': 'cinema · together',
+
+    'resume.title': '이전 방으로 복귀',
+    'resume.roomCodeLabel': '방 코드:',
+    'resume.btnResume': '🔁 호스트로 복귀',
+    'resume.btnForget': '🗑 잊어버리기 (저장된 자격증명 삭제)',
+    'resume.statusReclaiming': '복귀 중...',
+    'resume.statusCleanupFmt': '이전 세션 정리 중... ({elapsed}s / {total}s)',
+    'resume.statusFailLong': '복귀 실패: 이전 세션이 너무 오래 점유 중입니다. 새 방을 만들어주세요.',
+    'resume.defaultName': '호스트',
+
+    'role.title': '어떻게 시작할까요?',
+    'role.host': '호스트 (영화 고르고 방 만들기)',
+    'role.guest': '게스트 (방 코드로 참여)',
+    'role.hint': '💡 <b>호스트</b>는 WebDAV 정보가 필요해요.<br><b>게스트</b>는 방 코드만 있으면 돼요.',
+
+    'host.title': 'WebDAV 서버 연결 (호스트)',
+    'host.workerLabel': '워커 / 서버',
+    'host.workerOptDirect': 'URL 직접 입력',
+    'host.workerOptAdd': '+ 새 워커 추가…',
+    'host.workerManage': '워커 관리',
+    'host.addName': '이름',
+    'host.addNamePh': '예: Koofr',
+    'host.addUrl': '워커 주소 (워커 URL + 워커가 허용하는 경로 prefix)',
+    'host.addFolder': '기본 폴더 (선택)',
+    'host.btnCancel': '취소',
+    'host.btnAdd': '추가',
+    'host.urlLabel': '서버 URL',
+    'host.urlClearTip': '저장된 URL 모두 삭제',
+    'host.folderLabel': '폴더 경로',
+    'host.folderHint': '워커의 <code>ALLOWED_PREFIX</code> 안의 경로만 접근 가능해요.',
+    'host.userLabel': '아이디',
+    'host.userPh': '아이디 또는 이메일',
+    'host.passLabel': '비밀번호',
+    'host.nicknameLabel': '닉네임',
+    'host.nicknamePh': '예: 재이',
+    'host.relayLabel': 'VPN 사용 중 또는 연결이 잘 안 될 때 (relay 강제)',
+    'host.btnConnect': '연결하고 영화 고르기',
+
+    'guest.title': '방 참여 (게스트)',
+    'guest.roomLabel': '방 코드',
+    'guest.nicknameLabel': '닉네임',
+    'guest.nicknamePh': '예: 친구',
+    'guest.btnJoin': '파티 참여',
+    'guest.errCode': '올바른 방 코드를 입력해주세요.',
+    'guest.errName': '닉네임을 입력해주세요.',
+    'guest.statusJoining': '방에 참여하는 중...',
+    'guest.errJoinFmt': '참여 실패: {err}',
+
+    'browser.title': '동영상 선택',
+    'browser.parent': '상위 폴더',
+    'browser.loading': '불러오는 중...',
+    'browser.loadFail': '불러올 수 없습니다',
+    'browser.empty': '비어있습니다',
+    'browser.emptySub': '이 폴더에는 파일이 없습니다.',
+    'browser.fileFolderLabel': '폴더',
+    'browser.warnHevc': '⚠️ HEVC/H.265 코덱은 Chrome/Edge에서 재생 안 될 수 있어요.\n\nSafari는 가능합니다. 또는 H.264(x264)로 인코딩된 파일을 추천드려요.\n\n그래도 진행할까요?',
+    'browser.warnExtFmt': '⚠️ {ext} 형식은 브라우저에서 재생 안 될 가능성이 높아요.\n\nmp4(H.264) 또는 webm을 추천드려요.\n\n그래도 진행할까요?',
+
+    'roomSetup.title': '파티 만들기',
+    'roomSetup.panelTitle': '방 만들기',
+    'roomSetup.btnCreate': '방 만들고 친구 초대',
+    'roomSetup.hint': '💡 방이 만들어지면 방 코드가 표시됩니다.<br>그 코드를 친구에게 공유하세요. 친구는 게스트로 참여하면 자동으로 같은 영화가 재생됩니다.',
+    'roomSetup.statusHosting': '방을 만드는 중...',
+    'roomSetup.statusJoining': '방에 참여하는 중...',
+    'roomSetup.statusOk': '연결 성공!',
+
+    'theater.peerCountFmt': '{n}명',
+    'theater.btnMic': '마이크',
+    'theater.fsExit': '전체화면 종료',
+    'theater.unread': '새 메시지',
+    'theater.seekBack': '«« 10초',
+    'theater.seekFwd': '10초 »»',
+    'theater.queueLabel': '다음:',
+    'theater.pttZone': '누르고 있는 동안 말하기',
+    'theater.btnSeekBackTitle': '뒤로 (탭 10초 / 길게 60초)',
+    'theater.btnSeekBackAria': '뒤로 — 탭 10초, 길게 누르면 60초',
+    'theater.btnSeekFwdTitle': '앞으로 (탭 10초 / 길게 60초)',
+    'theater.btnSeekFwdAria': '앞으로 — 탭 10초, 길게 누르면 60초',
+    'theater.btnQueue': '다음 영화 큐',
+    'theater.btnVolume': '볼륨 조절',
+    'theater.btnSubs': '자막',
+    'theater.btnFullscreen': '전체화면',
+
+    'subs.off': '자막 끄기',
+    'subs.add': '자막 파일 추가 (.srt/.vtt)',
+    'subs.itemAuto': '자막',
+    'subs.itemAutoLabel': '자동 자막',
+    'subs.toastAddedFmt': '자막 추가됨: {label}',
+    'subs.toastAutoLoadedFmt': '자막 {n}개 자동 로드',
+
+    'vol.movie': '영화',
+    'vol.voice': '친구',
+    'vol.toggleVad': '🎙️ 자동 마이크 (말할 때만)',
+    'vol.toggleDuck': '🔉 대화 시 영화 볼륨 자동 감소',
+    'vol.toggleNoise': '🧹 마이크 노이즈 억제 (하이패스 + 컴프레서)',
+    'vol.togglePhoneMic': '📱 폰 내장 마이크 사용 (BT 스테레오 유지)',
+    'vol.micDeviceSelect': '마이크 장치 선택',
+    'vol.micDeviceRefresh': '장치 목록 새로고침',
+    'vol.presetMovie': '🎬 영화 우선 (영화 100% / 친구 50%)',
+    'vol.presetVoice': '💬 대화 우선 (영화 30% / 친구 100%)',
+    'vol.presetEqual': '⚖️ 동일 (둘 다 100%)',
+    'vol.toastVadOn': '자동 마이크 켜짐',
+    'vol.toastVadOff': '자동 마이크 꺼짐 (항상 송출)',
+    'vol.toastDuckOn': '자동 음량 감소 켜짐',
+    'vol.toastDuckOff': '자동 음량 감소 꺼짐',
+    'vol.toastNoiseOn': '노이즈 억제 켜짐 (다음 마이크 켤 때 적용)',
+    'vol.toastNoiseOff': '노이즈 억제 꺼짐 (다음 마이크 켤 때 적용)',
+    'vol.toastPhoneMode': '📱 폰 내장 마이크 모드 (BT 스테레오 유지)',
+    'vol.toastHeadsetMode': '🎧 BT 헤드셋 마이크 모드 (PTT 권장)',
+    'vol.micDeviceMissing': '마이크 장치를 찾지 못했습니다. 권한을 확인하세요.',
+    'vol.micDeviceMissingNonBt': 'BT가 아닌 마이크를 찾지 못했습니다. 새로고침을 시도하거나 BT 헤드셋 모드를 사용하세요.',
+    'vol.micDeviceFallbackFmt': '마이크 {id}…',
+
+    'side.tabChat': '채팅',
+    'side.tabPeople': '참여자',
+    'side.chatPh': '메시지 입력...',
+    'side.youSuffix': ' (나)',
+    'side.connected': '연결됨',
+
+    'share.ticket': '초대장',
+    'share.title': '친구 초대하기',
+    'share.btnCopy': '복사',
+    'share.btnMessage': '메시지 복사',
+    'share.btnNative': '다른 앱으로 공유',
+    'share.hint': '💡 친구가 링크를 누르면 자동으로 입장',
+    'share.toastCopied': '링크 복사 완료',
+    'share.toastMsgCopied': '메시지 복사 완료! 카톡에 붙여넣기 하세요',
+    'share.toastCopyFail': '복사 실패: 위 메시지를 직접 복사해주세요',
+    'share.shareApiTitle': '씨네 파티 초대',
+    'share.toastShareUnsupported': '공유 메뉴를 지원하지 않아 메시지를 복사했어요',
+    'share.toastShareFail': '공유 기능을 사용할 수 없습니다',
+    'share.movieFallback': '영화',
+    'share.text': '🎬 씨네 파티 초대!\n\n{name}님이 함께 영화 보자고 합니다.\n오늘의 영화: {movie}\n\n▼ 아래 링크를 누르면 자동으로 입장돼요\n{url}\n\n또는 코드 직접 입력: {code}',
+
+    'workerModal.ticket': '설정',
+    'workerModal.title': '워커 관리',
+    'workerModal.close': '닫기',
+    'workerModal.empty': '저장된 워커가 없어요.',
+    'workerModal.deleteAria': '삭제',
+    'workerModal.deleteConfirmFmt': '"{name}" 워커를 삭제할까요?',
+    'workerModal.hint': '💡 새 워커는 위 드롭다운의 <b>+ 새 워커 추가…</b>에서 추가하세요.',
+
+    'workerAdd.errName': '이름을 입력해주세요.',
+    'workerAdd.errUrl': '워커 주소를 입력해주세요.',
+    'workerAdd.errUrlBad': '올바른 URL 형식이 아닙니다.',
+    'workerAdd.errUrlScheme': 'http(s) URL이어야 합니다.',
+
+    'lobby.errAddFirst': '워커를 먼저 추가하거나 취소해주세요.',
+    'lobby.errMissing': '서버 URL과 닉네임을 입력해주세요.',
+    'lobby.errBadUrl': '올바른 URL 형식이 아닙니다.',
+    'lobby.statusConnecting': '연결 중...',
+    'lobby.errConnectFmt': '연결 실패: {err}',
+
+    'msg.peerJoinedFmt': '{name}님이 입장했습니다',
+    'msg.peerLeftFmt': '{name}님이 퇴장했습니다',
+    'msg.hostYielding': '호스트 역할을 양보합니다',
+    'msg.newHostFmt': '🎬 {name}님이 새 호스트가 되었습니다',
+    'msg.timeSyncFmt': '재생 위치 동기화: {sec}초',
+    'msg.movieFmt': '영화: {name}',
+    'msg.nextMoviePlayingFmt': '▶ 다음 영화: {name}',
+    'msg.nextMovieQueuedFmt': '📋 다음 영화: {name}',
+    'msg.hostDropped': '⚠️ 호스트 연결 끊김 — 재연결 시도 중...',
+    'msg.hostReconnected': '✅ 호스트 재연결됨',
+    'msg.hostNoBackup': '⚠️ 호스트 정보 백업이 없어 자동 복구 불가',
+    'msg.willPromoteFmt': '{name}님이 새 호스트가 됩니다',
+    'msg.youArePromoted': '🎬 새 호스트가 되었습니다',
+    'msg.youArePromotedToast': '당신이 새 호스트가 되었습니다',
+    'msg.hostNoResponse': '⚠️ 호스트 응답 없음 — 자동 복구 시도',
+    'msg.fetchingMovie': '호스트가 선택한 영화를 받는 중...',
+
+    'wait.titleFetching': '호스트의 영화 정보를 기다리는 중...',
+    'wait.titleChecking': '호스트와의 연결을 확인하는 중입니다',
+    'wait.failTitle': '호스트에게 연결할 수 없습니다',
+    'wait.failBodyAfterRetry': '여전히 연결이 안 되네요. 호스트가 자리를 비웠거나 차단된 환경일 수 있어요.',
+    'wait.failBodyFirst': 'VPN 또는 방화벽이 P2P를 막고 있을 수 있어요.<br>아래 버튼으로 우회 모드를 켜고 재시도해보세요.',
+    'wait.btnRelay': '🌐 우회 모드로 재시도',
+    'wait.btnRetry': '다시 시도',
+    'wait.btnLeave': '나가기',
+
+    'video.streamStarted': '스트리밍 재생 시작',
+    'video.codecToast': '이 영상의 코덱은 브라우저에서 지원하지 않습니다 (HEVC/H.265 등)',
+    'video.codecMsg': '⚠️ 재생 불가: 코덱 미지원. mp4(H.264) 영상을 사용해주세요.',
+    'video.dlStart': '영상 다운로드 시작...',
+    'video.dlMsgFmt': '영상 다운로드 중 ({mb}MB) — 다운로드 후 재생됩니다',
+    'video.loadFailToastFmt': '영상 로드 실패: {err}',
+    'video.loadFailMsgFmt': '영상 로드 실패: {err}',
+    'video.playFailFmt': '재생 실패: {err}',
+
+    'tap.title': '탭해서 다시 재생',
+    'tap.body': '브라우저 정책으로 한 번 탭이 필요해요<br>호스트 시간으로 자동 동기화됩니다',
+
+    'seek.fwd': '⏩ 앞으로',
+    'seek.back': '⏪ 뒤로',
+    'seek.relativeFmt': '{dir} {sec}초 (호스트)',
+    'seek.absoluteFmt': '⏩ {time} 위치로 이동 (호스트)',
+    'seek.smallFwdFmt': '{n}초 »',
+    'seek.smallBackFmt': '« {n}초',
+    'play.host': '▶️ 호스트가 재생',
+    'pause.host': '⏸️ 호스트가 일시정지',
+
+    'queue.title': '다음 영화 선택',
+    'queue.parent': '상위 폴더',
+    'queue.close': '닫기',
+    'queue.currentLabel': '큐: ',
+    'queue.btnCancel': '취소',
+    'queue.btnUp': '상위 폴더',
+    'queue.toastAlreadyPlaying': '이미 재생 중인 영화입니다',
+    'queue.toastQueuedFmt': '📋 다음 영화 큐: {name}',
+    'queue.toastStartingFmt': '▶ 다음 영화 시작 ({sec}초 후): {name}',
+    'queue.toastAutoCancelled': '다음 영화 자동 시작 취소됨',
+    'queue.toastCancelled': '다음 영화 큐 취소됨',
+
+    'pErr.unavailableId': '이미 사용 중인 방 코드입니다. 다시 시도해주세요.',
+    'pErr.peerUnavailable': '방을 찾을 수 없습니다. 코드를 확인해주세요.',
+    'pErr.network': 'PeerJS 서버에 연결할 수 없습니다 (네트워크 오류).',
+    'pErr.serverError': 'PeerJS 서버 오류 (server-error). 잠시 후 다시 시도해 주세요.',
+    'pErr.socketError': 'PeerJS 서버 소켓 끊김. 네트워크/방화벽 점검.',
+    'pErr.socketClosed': 'PeerJS 서버 연결 종료됨.',
+    'pErr.disconnected': 'PeerJS 서버 연결 해제됨. 자동 재연결 중...',
+    'pErr.browserIncompat': '이 브라우저는 WebRTC 미지원입니다.',
+    'pErr.invalidId': '방 코드 형식 오류.',
+    'pErr.invalidKey': 'PeerJS API 키 오류.',
+    'pErr.webrtc': 'WebRTC 협상 실패 (방화벽/VPN 의심).',
+    'pErr.sslUnavailable': 'HTTPS 환경 필요 (현재 HTTP에선 동작 불가).',
+    'pErr.fallbackFmt': '연결 오류 [{type}]: {msg}',
+    'pErr.disconnectedToast': '연결이 끊어졌습니다. 재연결 시도 중...',
+
+    'mic.toastSwitching': '마이크 전환 중 — 잠시 후 다시 시도하세요',
+    'mic.toastNeedPerm': '마이크 권한이 필요합니다',
+    'mic.toastDeviceMissing': '선택된 마이크 장치를 찾을 수 없습니다. 목록을 새로고침합니다.',
+    'mic.toastAccessFailFmt': '마이크 접근 실패: {err}',
+    'mic.toastPttBusy': 'PTT 사용 중 — 코너 버튼에서 손을 떼세요',
+    'mic.toastOff': '마이크 꺼짐',
+    'mic.toastOnVad': '🎙️ 마이크 켜짐 (말할 때만 송출)',
+    'mic.toastOnAlways': '🎙️ 마이크 켜짐 (항상 송출)',
+    'mic.toastTopOn': '상단 마이크 버튼이 켜져 있습니다',
+
+    'leave.confirm': '파티에서 나가시겠습니까?',
+    'lang.label': '언어',
+    'lang.toggleTo': 'EN',
+  },
+
+  en: {
+    'doc.title': 'Cine Party · WebDAV Watch Party',
+    'lobby.marqueeTitle': 'Cine Party',
+    'lobby.marqueeItalic': 'cinema · together',
+
+    'resume.title': 'Return to previous room',
+    'resume.roomCodeLabel': 'Room code:',
+    'resume.btnResume': '🔁 Resume as host',
+    'resume.btnForget': '🗑 Forget (clear saved credentials)',
+    'resume.statusReclaiming': 'Resuming…',
+    'resume.statusCleanupFmt': 'Clearing previous session… ({elapsed}s / {total}s)',
+    'resume.statusFailLong': 'Resume failed: previous session held too long. Please create a new room.',
+    'resume.defaultName': 'Host',
+
+    'role.title': 'How would you like to start?',
+    'role.host': 'Host (pick a movie & open a room)',
+    'role.guest': 'Guest (join with a room code)',
+    'role.hint': '💡 <b>Hosts</b> need WebDAV details.<br><b>Guests</b> only need a room code.',
+
+    'host.title': 'Connect to WebDAV server (host)',
+    'host.workerLabel': 'Worker / server',
+    'host.workerOptDirect': 'Enter URL directly',
+    'host.workerOptAdd': '+ Add new worker…',
+    'host.workerManage': 'Manage workers',
+    'host.addName': 'Name',
+    'host.addNamePh': 'e.g. Koofr',
+    'host.addUrl': 'Worker address (worker URL + allowed path prefix)',
+    'host.addFolder': 'Default folder (optional)',
+    'host.btnCancel': 'Cancel',
+    'host.btnAdd': 'Add',
+    'host.urlLabel': 'Server URL',
+    'host.urlClearTip': 'Clear all saved URLs',
+    'host.folderLabel': 'Folder path',
+    'host.folderHint': 'Only paths under the worker\'s <code>ALLOWED_PREFIX</code> are accessible.',
+    'host.userLabel': 'Username',
+    'host.userPh': 'username or email',
+    'host.passLabel': 'Password',
+    'host.nicknameLabel': 'Nickname',
+    'host.nicknamePh': 'e.g. Jae',
+    'host.relayLabel': 'Using a VPN or having connection issues (force relay)',
+    'host.btnConnect': 'Connect & pick a movie',
+
+    'guest.title': 'Join room (guest)',
+    'guest.roomLabel': 'Room code',
+    'guest.nicknameLabel': 'Nickname',
+    'guest.nicknamePh': 'e.g. Friend',
+    'guest.btnJoin': 'Join party',
+    'guest.errCode': 'Please enter a valid room code.',
+    'guest.errName': 'Please enter a nickname.',
+    'guest.statusJoining': 'Joining room…',
+    'guest.errJoinFmt': 'Join failed: {err}',
+
+    'browser.title': 'Pick a movie',
+    'browser.parent': 'Parent folder',
+    'browser.loading': 'Loading…',
+    'browser.loadFail': 'Could not load',
+    'browser.empty': 'Empty',
+    'browser.emptySub': 'No files in this folder.',
+    'browser.fileFolderLabel': 'Folder',
+    'browser.warnHevc': '⚠️ HEVC/H.265 may not play on Chrome/Edge.\n\nSafari can play it. Otherwise prefer H.264 (x264) encoded files.\n\nProceed anyway?',
+    'browser.warnExtFmt': '⚠️ {ext} format likely will not play in the browser.\n\nWe recommend mp4 (H.264) or webm.\n\nProceed anyway?',
+
+    'roomSetup.title': 'Create party',
+    'roomSetup.panelTitle': 'Create room',
+    'roomSetup.btnCreate': 'Create room & invite friends',
+    'roomSetup.hint': '💡 The room code appears once the room is created.<br>Share that code with your friends. When they join as guests, the same movie plays automatically.',
+    'roomSetup.statusHosting': 'Creating room…',
+    'roomSetup.statusJoining': 'Joining room…',
+    'roomSetup.statusOk': 'Connected!',
+
+    'theater.peerCountFmt': '{n} online',
+    'theater.btnMic': 'Mic',
+    'theater.fsExit': 'Exit fullscreen',
+    'theater.unread': 'New message',
+    'theater.seekBack': '«« 10s',
+    'theater.seekFwd': '10s »»',
+    'theater.queueLabel': 'Next:',
+    'theater.pttZone': 'Hold to talk',
+    'theater.btnSeekBackTitle': 'Back (tap 10s / hold 60s)',
+    'theater.btnSeekBackAria': 'Back — tap 10s, hold for 60s',
+    'theater.btnSeekFwdTitle': 'Forward (tap 10s / hold 60s)',
+    'theater.btnSeekFwdAria': 'Forward — tap 10s, hold for 60s',
+    'theater.btnQueue': 'Queue next movie',
+    'theater.btnVolume': 'Volume',
+    'theater.btnSubs': 'Subtitles',
+    'theater.btnFullscreen': 'Fullscreen',
+
+    'subs.off': 'Turn off subtitles',
+    'subs.add': 'Add subtitle file (.srt/.vtt)',
+    'subs.itemAuto': 'Subtitle',
+    'subs.itemAutoLabel': 'Auto subtitle',
+    'subs.toastAddedFmt': 'Subtitle added: {label}',
+    'subs.toastAutoLoadedFmt': '{n} subtitles auto-loaded',
+
+    'vol.movie': 'Movie',
+    'vol.voice': 'Friends',
+    'vol.toggleVad': '🎙️ Auto mic (only when speaking)',
+    'vol.toggleDuck': '🔉 Lower movie volume during chat',
+    'vol.toggleNoise': '🧹 Mic noise suppression (highpass + compressor)',
+    'vol.togglePhoneMic': '📱 Use phone built-in mic (keep BT stereo)',
+    'vol.micDeviceSelect': 'Mic device',
+    'vol.micDeviceRefresh': 'Refresh device list',
+    'vol.presetMovie': '🎬 Movie focus (movie 100% / friends 50%)',
+    'vol.presetVoice': '💬 Talk focus (movie 30% / friends 100%)',
+    'vol.presetEqual': '⚖️ Balanced (both 100%)',
+    'vol.toastVadOn': 'Auto mic on',
+    'vol.toastVadOff': 'Auto mic off (always sending)',
+    'vol.toastDuckOn': 'Auto ducking on',
+    'vol.toastDuckOff': 'Auto ducking off',
+    'vol.toastNoiseOn': 'Noise suppression on (applies next time you turn the mic on)',
+    'vol.toastNoiseOff': 'Noise suppression off (applies next time you turn the mic on)',
+    'vol.toastPhoneMode': '📱 Phone built-in mic mode (BT stereo preserved)',
+    'vol.toastHeadsetMode': '🎧 BT headset mic mode (PTT recommended)',
+    'vol.micDeviceMissing': 'No mic device found. Check microphone permission.',
+    'vol.micDeviceMissingNonBt': 'No non-BT mic found. Try refreshing or use BT headset mode.',
+    'vol.micDeviceFallbackFmt': 'Mic {id}…',
+
+    'side.tabChat': 'Chat',
+    'side.tabPeople': 'People',
+    'side.chatPh': 'Type a message…',
+    'side.youSuffix': ' (you)',
+    'side.connected': 'Connected',
+
+    'share.ticket': 'Invite',
+    'share.title': 'Invite friends',
+    'share.btnCopy': 'Copy',
+    'share.btnMessage': 'Copy message',
+    'share.btnNative': 'Share via app',
+    'share.hint': '💡 Friends join automatically by tapping the link',
+    'share.toastCopied': 'Link copied',
+    'share.toastMsgCopied': 'Message copied! Paste it into your chat app',
+    'share.toastCopyFail': 'Copy failed — please copy the message above by hand',
+    'share.shareApiTitle': 'Cine Party invite',
+    'share.toastShareUnsupported': 'Share menu not supported — copied the message instead',
+    'share.toastShareFail': 'Share is not available',
+    'share.movieFallback': 'movie',
+    'share.text': '🎬 Cine Party invite!\n\n{name} invites you to watch a movie together.\nTonight\'s movie: {movie}\n\n▼ Tap the link below to join automatically\n{url}\n\nOr enter the code: {code}',
+
+    'workerModal.ticket': 'Settings',
+    'workerModal.title': 'Manage workers',
+    'workerModal.close': 'Close',
+    'workerModal.empty': 'No saved workers.',
+    'workerModal.deleteAria': 'Delete',
+    'workerModal.deleteConfirmFmt': 'Delete worker "{name}"?',
+    'workerModal.hint': '💡 Add a new worker via <b>+ Add new worker…</b> in the dropdown above.',
+
+    'workerAdd.errName': 'Please enter a name.',
+    'workerAdd.errUrl': 'Please enter a worker address.',
+    'workerAdd.errUrlBad': 'Not a valid URL.',
+    'workerAdd.errUrlScheme': 'URL must be http(s).',
+
+    'lobby.errAddFirst': 'Please add or cancel the new worker first.',
+    'lobby.errMissing': 'Please enter the server URL and a nickname.',
+    'lobby.errBadUrl': 'Not a valid URL.',
+    'lobby.statusConnecting': 'Connecting…',
+    'lobby.errConnectFmt': 'Connect failed: {err}',
+
+    'msg.peerJoinedFmt': '{name} joined',
+    'msg.peerLeftFmt': '{name} left',
+    'msg.hostYielding': 'Yielding host role',
+    'msg.newHostFmt': '🎬 {name} is the new host',
+    'msg.timeSyncFmt': 'Playback synced: {sec}s',
+    'msg.movieFmt': 'Movie: {name}',
+    'msg.nextMoviePlayingFmt': '▶ Next movie: {name}',
+    'msg.nextMovieQueuedFmt': '📋 Next movie: {name}',
+    'msg.hostDropped': '⚠️ Host disconnected — trying to reconnect…',
+    'msg.hostReconnected': '✅ Host reconnected',
+    'msg.hostNoBackup': '⚠️ No host backup — auto-recovery not possible',
+    'msg.willPromoteFmt': '{name} will become the new host',
+    'msg.youArePromoted': '🎬 You are the new host',
+    'msg.youArePromotedToast': 'You are the new host',
+    'msg.hostNoResponse': '⚠️ Host not responding — attempting recovery',
+    'msg.fetchingMovie': 'Fetching movie info from host…',
+
+    'wait.titleFetching': 'Waiting for the host\'s movie info…',
+    'wait.titleChecking': 'Checking the connection to the host',
+    'wait.failTitle': 'Could not connect to the host',
+    'wait.failBodyAfterRetry': 'Still no luck. The host may be away or behind a blocked network.',
+    'wait.failBodyFirst': 'A VPN or firewall might be blocking P2P.<br>Tap below to retry in relay mode.',
+    'wait.btnRelay': '🌐 Retry in relay mode',
+    'wait.btnRetry': 'Try again',
+    'wait.btnLeave': 'Leave',
+
+    'video.streamStarted': 'Streaming started',
+    'video.codecToast': 'This video\'s codec is not supported by the browser (e.g. HEVC/H.265)',
+    'video.codecMsg': '⚠️ Cannot play: codec not supported. Please use mp4 (H.264).',
+    'video.dlStart': 'Starting video download…',
+    'video.dlMsgFmt': 'Downloading video ({mb}MB) — playback starts after download',
+    'video.loadFailToastFmt': 'Video load failed: {err}',
+    'video.loadFailMsgFmt': 'Video load failed: {err}',
+    'video.playFailFmt': 'Playback failed: {err}',
+
+    'tap.title': 'Tap to resume',
+    'tap.body': 'Browser policy needs one tap<br>Time will sync to the host automatically',
+
+    'seek.fwd': '⏩ Forward',
+    'seek.back': '⏪ Back',
+    'seek.relativeFmt': '{dir} {sec}s (host)',
+    'seek.absoluteFmt': '⏩ Jumped to {time} (host)',
+    'seek.smallFwdFmt': '{n}s »',
+    'seek.smallBackFmt': '« {n}s',
+    'play.host': '▶️ Host pressed play',
+    'pause.host': '⏸️ Host paused',
+
+    'queue.title': 'Pick the next movie',
+    'queue.parent': 'Parent folder',
+    'queue.close': 'Close',
+    'queue.currentLabel': 'Queue: ',
+    'queue.btnCancel': 'Cancel',
+    'queue.btnUp': 'Parent folder',
+    'queue.toastAlreadyPlaying': 'Already playing this movie',
+    'queue.toastQueuedFmt': '📋 Queued next movie: {name}',
+    'queue.toastStartingFmt': '▶ Starting next movie in {sec}s: {name}',
+    'queue.toastAutoCancelled': 'Cancelled auto-start of next movie',
+    'queue.toastCancelled': 'Cancelled queued movie',
+
+    'pErr.unavailableId': 'That room code is taken. Please try again.',
+    'pErr.peerUnavailable': 'Room not found. Please check the code.',
+    'pErr.network': 'Cannot reach the PeerJS server (network error).',
+    'pErr.serverError': 'PeerJS server error. Please retry shortly.',
+    'pErr.socketError': 'PeerJS socket dropped. Check your network/firewall.',
+    'pErr.socketClosed': 'PeerJS server connection closed.',
+    'pErr.disconnected': 'Disconnected from PeerJS. Reconnecting…',
+    'pErr.browserIncompat': 'This browser does not support WebRTC.',
+    'pErr.invalidId': 'Invalid room code format.',
+    'pErr.invalidKey': 'PeerJS API key error.',
+    'pErr.webrtc': 'WebRTC negotiation failed (firewall/VPN suspected).',
+    'pErr.sslUnavailable': 'HTTPS required (this won\'t run over plain HTTP).',
+    'pErr.fallbackFmt': 'Connection error [{type}]: {msg}',
+    'pErr.disconnectedToast': 'Connection lost. Reconnecting…',
+
+    'mic.toastSwitching': 'Switching mic — please retry shortly',
+    'mic.toastNeedPerm': 'Mic permission required',
+    'mic.toastDeviceMissing': 'Selected mic device not found. Refreshing the list.',
+    'mic.toastAccessFailFmt': 'Mic access failed: {err}',
+    'mic.toastPttBusy': 'PTT in use — release the corner button first',
+    'mic.toastOff': 'Mic off',
+    'mic.toastOnVad': '🎙️ Mic on (only when speaking)',
+    'mic.toastOnAlways': '🎙️ Mic on (always sending)',
+    'mic.toastTopOn': 'The top mic button is on',
+
+    'leave.confirm': 'Leave the party?',
+    'lang.label': 'Language',
+    'lang.toggleTo': '한국어',
+  },
+};
+
+function detectLang() {
+  try {
+    const saved = localStorage.getItem('cinema_lang');
+    if (saved === 'ko' || saved === 'en') return saved;
+  } catch {}
+  const nav = (navigator.language || '').toLowerCase();
+  return nav.startsWith('en') ? 'en' : 'ko';
+}
+
+let _currentLang = detectLang();
+function t(key, params) {
+  const tbl = STRINGS[_currentLang] || STRINGS.ko;
+  const s = (tbl[key] != null ? tbl[key] : (STRINGS.ko[key] != null ? STRINGS.ko[key] : key));
+  if (!params) return s;
+  return s.replace(/\{(\w+)\}/g, (_, k) => params[k] != null ? String(params[k]) : '');
+}
+
+function applyTranslations() {
+  document.title = t('doc.title');
+  document.documentElement.lang = _currentLang;
+
+  // textContent / innerHTML
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const useHtml = el.hasAttribute('data-i18n-html');
+    if (useHtml) el.innerHTML = t(key);
+    else el.textContent = t(key);
+  });
+
+  // Attribute translations: data-i18n-attr-NAME="key"
+  // Walk a static list of attrs we care about — covers placeholder/title/aria-label.
+  for (const attr of ['placeholder', 'title', 'aria-label']) {
+    const dataAttr = 'data-i18n-attr-' + attr;
+    document.querySelectorAll('[' + dataAttr + ']').forEach(el => {
+      el.setAttribute(attr, t(el.getAttribute(dataAttr)));
+    });
+  }
+
+  // Lang toggle buttons always show the *other* language as their label.
+  document.querySelectorAll('.lang-toggle').forEach(b => { b.textContent = t('lang.toggleTo'); });
+}
+
+function setLang(lang) {
+  if (lang !== 'ko' && lang !== 'en') return;
+  _currentLang = lang;
+  try { localStorage.setItem('cinema_lang', lang); } catch {}
+  applyTranslations();
+}
+
+function toggleLang() {
+  setLang(_currentLang === 'ko' ? 'en' : 'ko');
+}
+
 /* =====================================================
    STATE
 ===================================================== */
@@ -2614,11 +3201,11 @@ $('btn-guest-join').addEventListener('click', async () => {
   const name = $('guest-name').value.trim();
 
   if (!code || code.length < 5) {
-    setStatus('guest-status', '올바른 방 코드를 입력해주세요.', 'error');
+    setStatus('guest-status', t('guest.errCode'), 'error');
     return;
   }
   if (!name) {
-    setStatus('guest-status', '닉네임을 입력해주세요.', 'error');
+    setStatus('guest-status', t('guest.errName'), 'error');
     return;
   }
 
@@ -2630,13 +3217,13 @@ $('btn-guest-join').addEventListener('click', async () => {
     localStorage.setItem('cineparty.name', name);
   } catch(e) {}
 
-  setStatus('guest-status', '방에 참여하는 중...');
+  setStatus('guest-status', t('guest.statusJoining'));
   $('btn-guest-join').disabled = true;
 
   try {
     await initPeer(false);
   } catch (err) {
-    setStatus('guest-status', '참여 실패: ' + err.message, 'error');
+    setStatus('guest-status', t('guest.errJoinFmt', { err: err.message }), 'error');
     $('btn-guest-join').disabled = false;
   }
 });
@@ -2728,7 +3315,7 @@ async function resumeAsHost(saved) {
   // Restore queuedFile if persisted — guests will get the indicator on
   // first connect via the saveHostSession + queued-movie message paths.
   state.queuedFile = saved.queuedFile || null;
-  state.myName = saved.myName || '호스트';
+  state.myName = saved.myName || t('resume.defaultName');
   state.roomCode = saved.roomCode;
   state.isHost = true;
   // Flag for setupConnection's conn.on('open') — when an existing guest
@@ -2747,7 +3334,7 @@ async function resumeAsHost(saved) {
 
   $('btn-resume-host').disabled = true;
   $('btn-resume-forget').disabled = true;
-  setStatus('resume-status', '복귀 중...');
+  setStatus('resume-status', t('resume.statusReclaiming'));
 
   const startedAt = Date.now();
 
@@ -2759,15 +3346,15 @@ async function resumeAsHost(saved) {
     const elapsed = Date.now() - startedAt;
     setStatus('resume-status',
       elapsed < 4000
-        ? '복귀 중...'
-        : `이전 세션 정리 중... (${Math.floor(elapsed / 1000)}s / ${Math.floor(RESUME_CLAIM_TIMEOUT_MS / 1000)}s)`);
+        ? t('resume.statusReclaiming')
+        : t('resume.statusCleanupFmt', { elapsed: Math.floor(elapsed / 1000), total: Math.floor(RESUME_CLAIM_TIMEOUT_MS / 1000) }));
 
     // The retry hook is read by initPeer's error handler — see peer.on('error')
     state.resumeRetry = {
       onUnavailableId: () => {
         if (Date.now() - startedAt > RESUME_CLAIM_TIMEOUT_MS) {
           state.resumeRetry = null;
-          setStatus('resume-status', '복귀 실패: 이전 세션이 너무 오래 점유 중입니다. 새 방을 만들어주세요.', 'error');
+          setStatus('resume-status', t('resume.statusFailLong'), 'error');
           $('btn-resume-host').disabled = false;
           $('btn-resume-forget').disabled = false;
           return;
@@ -2861,11 +3448,11 @@ function renderWorkerSelect() {
   }
   const optAdd = document.createElement('option');
   optAdd.value = '__add__';
-  optAdd.textContent = '+ 새 워커 추가…';
+  optAdd.textContent = t('host.workerOptAdd');
   sel.appendChild(optAdd);
   const optDirect = document.createElement('option');
   optDirect.value = '__direct__';
-  optDirect.textContent = 'URL 직접 입력';
+  optDirect.textContent = t('host.workerOptDirect');
   sel.appendChild(optDirect);
   // Restore prior selection if it still exists, else default
   if (prevValue && (prevValue === '__direct__' || prevValue === '__add__' || workers.some(w => w.id === prevValue))) {
@@ -2935,7 +3522,7 @@ function renderWorkerListModal() {
   if (workers.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'worker-list-empty';
-    empty.textContent = '저장된 워커가 없어요.';
+    empty.textContent = t('workerModal.empty');
     list.appendChild(empty);
     return;
   }
@@ -2947,14 +3534,14 @@ function renderWorkerListModal() {
         <div class="name"></div>
         <div class="url"></div>
       </div>
-      <button class="delete" type="button" title="삭제" aria-label="삭제">
+      <button class="delete" type="button" title="${escapeHtml(t('workerModal.deleteAria'))}" aria-label="${escapeHtml(t('workerModal.deleteAria'))}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>
       </button>
     `;
     row.querySelector('.name').textContent = w.name;
     row.querySelector('.url').textContent = w.baseUrl + (w.defaultFolder ? '  → ' + w.defaultFolder : '');
     row.querySelector('.delete').addEventListener('click', () => {
-      if (!confirm(`"${w.name}" 워커를 삭제할까요?`)) return;
+      if (!confirm(t('workerModal.deleteConfirmFmt', { name: w.name }))) return;
       const sel = $('dav-worker-select');
       const wasActive = (sel.value === w.id);
       const remaining = loadWorkers().filter(x => x.id !== w.id);
@@ -3012,12 +3599,12 @@ $('btn-worker-add-save').addEventListener('click', () => {
   const name = $('worker-add-name').value.trim();
   const baseUrlRaw = $('worker-add-url').value.trim();
   const defaultFolder = normalizeFolder($('worker-add-folder').value);
-  if (!name) { toast('이름을 입력해주세요.'); $('worker-add-name').focus(); return; }
-  if (!baseUrlRaw) { toast('워커 주소를 입력해주세요.'); $('worker-add-url').focus(); return; }
+  if (!name) { toast(t('workerAdd.errName')); $('worker-add-name').focus(); return; }
+  if (!baseUrlRaw) { toast(t('workerAdd.errUrl')); $('worker-add-url').focus(); return; }
   let parsed;
-  try { parsed = new URL(baseUrlRaw); } catch { toast('올바른 URL 형식이 아닙니다.'); $('worker-add-url').focus(); return; }
+  try { parsed = new URL(baseUrlRaw); } catch { toast(t('workerAdd.errUrlBad')); $('worker-add-url').focus(); return; }
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    toast('http(s) URL이어야 합니다.'); return;
+    toast(t('workerAdd.errUrlScheme')); return;
   }
   const baseUrl = normalizeBaseUrl(parsed.origin + parsed.pathname);
   const id = makeWorkerId();
@@ -3080,7 +3667,7 @@ renderWorkerSelect();
 $('btn-connect').addEventListener('click', async () => {
   const mode = $('dav-worker-select').value;
   if (mode === '__add__') {
-    setStatus('lobby-status', '워커를 먼저 추가하거나 취소해주세요.', 'error');
+    setStatus('lobby-status', t('lobby.errAddFirst'), 'error');
     return;
   }
   const url = buildEffectiveDavUrl();
@@ -3089,7 +3676,7 @@ $('btn-connect').addEventListener('click', async () => {
   const name = $('my-name').value.trim();
 
   if (!url || !name) {
-    setStatus('lobby-status', '서버 URL과 닉네임을 입력해주세요.', 'error');
+    setStatus('lobby-status', t('lobby.errMissing'), 'error');
     return;
   }
 
@@ -3098,7 +3685,7 @@ $('btn-connect').addEventListener('click', async () => {
   try {
     parsed = new URL(url);
   } catch {
-    setStatus('lobby-status', '올바른 URL 형식이 아닙니다.', 'error');
+    setStatus('lobby-status', t('lobby.errBadUrl'), 'error');
     return;
   }
   const origin = parsed.origin;
@@ -3127,7 +3714,7 @@ $('btn-connect').addEventListener('click', async () => {
     }
   } catch(e) {}
 
-  setStatus('lobby-status', '연결 중...');
+  setStatus('lobby-status', t('lobby.statusConnecting'));
   $('btn-connect').disabled = true;
 
   try {
@@ -3138,7 +3725,7 @@ $('btn-connect').addEventListener('click', async () => {
     clearStatus('lobby-status');
     showScreen('browser');
   } catch (err) {
-    setStatus('lobby-status', '연결 실패: ' + err.message, 'error');
+    setStatus('lobby-status', t('lobby.errConnectFmt', { err: err.message }), 'error');
   } finally {
     $('btn-connect').disabled = false;
   }
@@ -3196,7 +3783,7 @@ $('dav-url-clear').addEventListener('click', () => {
 ===================================================== */
 async function loadDirectory(path) {
   const list = $('file-list');
-  list.innerHTML = '<div class="empty"><div class="spinner" style="margin: 0 auto 14px;"></div><div>불러오는 중...</div></div>';
+  list.innerHTML = `<div class="empty"><div class="spinner" style="margin: 0 auto 14px;"></div><div>${escapeHtml(t('browser.loading'))}</div></div>`;
 
   try {
     const items = await davList(path);
@@ -3204,7 +3791,7 @@ async function loadDirectory(path) {
     renderFileList(items);
     renderCrumbs(path);
   } catch (err) {
-    list.innerHTML = `<div class="empty"><div class="em">불러올 수 없습니다</div><div class="sub">${escapeHtml(err.message)}</div></div>`;
+    list.innerHTML = `<div class="empty"><div class="em">${escapeHtml(t('browser.loadFail'))}</div><div class="sub">${escapeHtml(err.message)}</div></div>`;
   }
 }
 
@@ -3230,7 +3817,7 @@ function renderFileList(items) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </div>
       <div class="file-meta">
-        <div class="file-name">상위 폴더</div>
+        <div class="file-name">${escapeHtml(t('browser.parent'))}</div>
         <div class="file-sub">..</div>
       </div>
     `;
@@ -3244,7 +3831,7 @@ function renderFileList(items) {
   if (items.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty';
-    empty.innerHTML = '<div class="em">비어있습니다</div><div class="sub">이 폴더에는 파일이 없습니다.</div>';
+    empty.innerHTML = `<div class="em">${escapeHtml(t('browser.empty'))}</div><div class="sub">${escapeHtml(t('browser.emptySub'))}</div>`;
     list.appendChild(empty);
     return;
   }
@@ -3262,7 +3849,7 @@ function renderFileList(items) {
       <div class="file-icon ${item.isDir ? 'folder' : (isVideo ? 'video' : '')}">${iconSvg}</div>
       <div class="file-meta">
         <div class="file-name">${escapeHtml(item.name)}</div>
-        <div class="file-sub">${item.isDir ? '폴더' : (item.ext ? item.ext.toUpperCase() + ' · ' : '') + fmtSize(item.size)}</div>
+        <div class="file-sub">${item.isDir ? escapeHtml(t('browser.fileFolderLabel')) : (item.ext ? item.ext.toUpperCase() + ' · ' : '') + fmtSize(item.size)}</div>
       </div>
     `;
 
@@ -3292,9 +3879,9 @@ function selectVideo(item) {
   const lowerName = item.name.toLowerCase();
   let warning = null;
   if (/(\.|_)x265|hevc|h\.?265/i.test(item.name)) {
-    warning = '⚠️ HEVC/H.265 코덱은 Chrome/Edge에서 재생 안 될 수 있어요.\n\nSafari는 가능합니다. 또는 H.264(x264)로 인코딩된 파일을 추천드려요.\n\n그래도 진행할까요?';
+    warning = t('browser.warnHevc');
   } else if (item.ext === 'avi' || item.ext === 'wmv' || item.ext === 'flv') {
-    warning = `⚠️ ${item.ext.toUpperCase()} 형식은 브라우저에서 재생 안 될 가능성이 높아요.\n\nmp4(H.264) 또는 webm을 추천드려요.\n\n그래도 진행할까요?`;
+    warning = t('browser.warnExtFmt', { ext: item.ext.toUpperCase() });
   }
 
   if (warning) {
@@ -3357,7 +3944,7 @@ $('btn-create-room').addEventListener('click', async () => {
 async function initPeer(isHost) {
   // Status target depends on which screen is showing
   const statusEl = isHost ? 'room-status' : 'guest-status';
-  setStatus(statusEl, isHost ? '방을 만드는 중...' : '방에 참여하는 중...');
+  setStatus(statusEl, t(isHost ? 'roomSetup.statusHosting' : 'roomSetup.statusJoining'));
   if (isHost) $('btn-create-room').disabled = true;
 
   // Use room code as deterministic peer ID for host;
@@ -3417,7 +4004,7 @@ async function initPeer(isHost) {
     if (!state.myJoinTime) state.myJoinTime = Date.now();
     // Resume flow succeeded — the deterministic ID is ours again
     if (state.resumeRetry) state.resumeRetry.onSuccess();
-    setStatus(statusEl, '연결 성공!', 'success');
+    setStatus(statusEl, t('roomSetup.statusOk'), 'success');
     state.participants.set(id, {
       name: state.myName,
       color: colorFromString(state.myName),
@@ -3494,20 +4081,21 @@ async function initPeer(isHost) {
     // screenshot) can tell broker issues from network issues from
     // misconfiguration.
     const errorMessages = {
-      'unavailable-id':       '이미 사용 중인 방 코드입니다. 다시 시도해주세요.',
-      'peer-unavailable':     '방을 찾을 수 없습니다. 코드를 확인해주세요.',
-      'network':              'PeerJS 서버에 연결할 수 없습니다 (네트워크 오류).',
-      'server-error':         'PeerJS 서버 오류 (server-error). 잠시 후 다시 시도해 주세요.',
-      'socket-error':         'PeerJS 서버 소켓 끊김. 네트워크/방화벽 점검.',
-      'socket-closed':        'PeerJS 서버 연결 종료됨.',
-      'disconnected':         'PeerJS 서버 연결 해제됨. 자동 재연결 중...',
-      'browser-incompatible': '이 브라우저는 WebRTC 미지원입니다.',
-      'invalid-id':           '방 코드 형식 오류.',
-      'invalid-key':          'PeerJS API 키 오류.',
-      'webrtc':               'WebRTC 협상 실패 (방화벽/VPN 의심).',
-      'ssl-unavailable':      'HTTPS 환경 필요 (현재 HTTP에선 동작 불가).',
+      'unavailable-id':       'pErr.unavailableId',
+      'peer-unavailable':     'pErr.peerUnavailable',
+      'network':              'pErr.network',
+      'server-error':         'pErr.serverError',
+      'socket-error':         'pErr.socketError',
+      'socket-closed':        'pErr.socketClosed',
+      'disconnected':         'pErr.disconnected',
+      'browser-incompatible': 'pErr.browserIncompat',
+      'invalid-id':           'pErr.invalidId',
+      'invalid-key':          'pErr.invalidKey',
+      'webrtc':               'pErr.webrtc',
+      'ssl-unavailable':      'pErr.sslUnavailable',
     };
-    const msg = errorMessages[err.type] || `연결 오류 [${err.type}]: ${err.message || ''}`;
+    const errKey = errorMessages[err.type];
+    const msg = errKey ? t(errKey) : t('pErr.fallbackFmt', { type: err.type, msg: err.message || '' });
     setStatus(statusEl, msg, 'error');
     if (isHost) $('btn-create-room').disabled = false;
     else $('btn-guest-join').disabled = false;
@@ -3518,7 +4106,7 @@ async function initPeer(isHost) {
     // media calls can keep flowing peer-to-peer; only NEW calls/connections
     // need the broker. Reconnect is automatic.
     console.warn('[peer.disconnected] broker dropped — reconnecting');
-    toast('연결이 끊어졌습니다. 재연결 시도 중...');
+    toast(t('pErr.disconnectedToast'));
     state.peer.reconnect();
   });
 }
@@ -3748,7 +4336,7 @@ function handleData(fromId, data) {
         joinTime: data.joinTime || Date.now(),
         name: data.name
       });
-      addSystemMsg(`${data.name}님이 입장했습니다`);
+      addSystemMsg(t('msg.peerJoinedFmt', { name: data.name }));
       renderParticipants();
       updatePeerCount();
       break;
@@ -3830,7 +4418,7 @@ function handleData(fromId, data) {
         }
         if (theyWin) {
           console.log('[split-brain] yielding host role to', fromId);
-          addSystemMsg('호스트 역할을 양보합니다');
+          addSystemMsg(t('msg.hostYielding'));
           state.isHost = false;
           state.hostId = fromId;
           stopHostHeartbeat();
@@ -3912,7 +4500,7 @@ function handleData(fromId, data) {
           break;
         }
         // I yield
-        addSystemMsg('호스트 역할을 양보합니다');
+        addSystemMsg(t('msg.hostYielding'));
         state.isHost = false;
         stopHostHeartbeat();
       }
@@ -3923,7 +4511,7 @@ function handleData(fromId, data) {
       // Refresh host-only chrome (queue button etc.) — promotion may have
       // flipped isHost in either direction.
       applyHostBodyClass();
-      addSystemMsg(`🎬 ${data.newHostName}님이 새 호스트가 되었습니다`);
+      addSystemMsg(t('msg.newHostFmt', { name: data.newHostName }));
       renderParticipants();
       // Update host backup with whatever the new host has
       if (data.movieFile && data.dav) {
@@ -4000,7 +4588,7 @@ function handleData(fromId, data) {
       if (!playerEl || !state.videoUrl) break;
       if (typeof data.time !== 'number' || data.time < 0) break;
       console.log('[resume] adopting guest playback time:', data.time, 'paused:', data.paused);
-      addSystemMsg(`재생 위치 동기화: ${Math.floor(data.time)}초`);
+      addSystemMsg(t('msg.timeSyncFmt', { sec: Math.floor(data.time) }));
       suppressSyncFor(() => {
         playerEl.currentTime = data.time;
         if (data.paused) playerEl.pause();
@@ -4026,7 +4614,7 @@ function handleData(fromId, data) {
           // Clear our local view of what was queued — auto-transition has consumed it
           state.queuedFile = null;
           refreshQueueUI();
-          addSystemMsg(isInitial ? `영화: ${data.file.name}` : `▶ 다음 영화: ${data.file.name}`);
+          addSystemMsg(t(isInitial ? 'msg.movieFmt' : 'msg.nextMoviePlayingFmt', { name: data.file.name }));
           if (isInitial) {
             state.hostId = fromId;
             state.hostLastSeen = Date.now();
@@ -4058,7 +4646,7 @@ function handleData(fromId, data) {
       state.queuedFile = data.file || null;
       refreshQueueUI();
       if (!state.isHost && data.file) {
-        addSystemMsg(`📋 다음 영화: ${data.file.name}`);
+        addSystemMsg(t('msg.nextMovieQueuedFmt', { name: data.file.name }));
       }
       break;
   }
@@ -4066,7 +4654,7 @@ function handleData(fromId, data) {
 
 function handlePeerLeave(peerId) {
   const p = state.participants.get(peerId);
-  if (p) addSystemMsg(`${p.name}님이 퇴장했습니다`);
+  if (p) addSystemMsg(t('msg.peerLeftFmt', { name: p.name }));
   state.participants.delete(peerId);
   state.connections.delete(peerId);
   state.knownPeers.delete(peerId);
@@ -4083,7 +4671,7 @@ function handlePeerLeave(peerId) {
   // this, we'd immediately promote and split-brain the room.
   if (peerId === state.hostId && !state.isHost) {
     console.log('[host-leave] data channel to host closed — starting reconnect loop');
-    addSystemMsg('⚠️ 호스트 연결 끊김 — 재연결 시도 중...');
+    addSystemMsg(t('msg.hostDropped'));
     startHostReconnectLoop();
   }
 }
@@ -4099,7 +4687,7 @@ function startHostReconnectLoop() {
       console.log('[host-reconnect] reconnected after', attempts * 2, 's');
       clearInterval(state.hostReconnectInterval);
       state.hostReconnectInterval = null;
-      addSystemMsg('✅ 호스트 재연결됨');
+      addSystemMsg(t('msg.hostReconnected'));
       return;
     }
     // I got promoted by something else (e.g. heartbeat watchdog) — stop
@@ -4164,7 +4752,7 @@ function attemptHostPromotion() {
   if (state.isHost) return;
   if (!state.hostBackup || !state.hostBackup.file) {
     console.warn('[promotion] no host backup available, cannot promote');
-    addSystemMsg('⚠️ 호스트 정보 백업이 없어 자동 복구 불가');
+    addSystemMsg(t('msg.hostNoBackup'));
     return;
   }
 
@@ -4184,7 +4772,7 @@ function attemptHostPromotion() {
   } else {
     // Someone else will be host. Wait for them to announce.
     state.promotionInProgress = true;
-    addSystemMsg(`${winner.name}님이 새 호스트가 됩니다`);
+    addSystemMsg(t('msg.willPromoteFmt', { name: winner.name }));
     // Failsafe: if no announcement comes in 8s, try again
     setTimeout(() => {
       state.promotionInProgress = false;
@@ -4199,7 +4787,7 @@ function attemptHostPromotion() {
 async function promoteSelfToHost() {
   state.promotionInProgress = true;
   console.log('[promotion] promoting self to host');
-  addSystemMsg('🎬 새 호스트가 되었습니다');
+  addSystemMsg(t('msg.youArePromoted'));
 
   // Restore host data from backup
   state.selectedFile = state.hostBackup.file;
@@ -4233,7 +4821,7 @@ async function promoteSelfToHost() {
     await loadVideo();
   }
 
-  toast('당신이 새 호스트가 되었습니다');
+  toast(t('msg.youArePromotedToast'));
   state.promotionInProgress = false;
 }
 
@@ -4284,7 +4872,7 @@ function startHostWatchdog() {
     if (elapsed > HOST_SILENCE_PROMOTE_MS) {
       console.log('[watchdog] host silent for', elapsed, 'ms — promoting');
       stopHostWatchdog();
-      addSystemMsg('⚠️ 호스트 응답 없음 — 자동 복구 시도');
+      addSystemMsg(t('msg.hostNoResponse'));
       attemptHostPromotion();
     }
   }, 2000);
@@ -4310,7 +4898,7 @@ function sendToPeer(peerId, data) {
 
 function updatePeerCount() {
   const n = state.participants.size;
-  $('peer-count').textContent = n + '명';
+  $('peer-count').textContent = t('theater.peerCountFmt', { n });
   $('tab-ppl-count').textContent = n;
 }
 
@@ -4337,7 +4925,7 @@ async function enterTheater() {
   } else {
     // Guest: wait for movie-info from host (handled in 'data' message handler)
     showWaitingForMovieUI();
-    addSystemMsg('호스트가 선택한 영화를 받는 중...');
+    addSystemMsg(t('msg.fetchingMovie'));
 
     // Retry mechanism: ask host every 3 seconds until we get movie info
     let retryCount = 0;
@@ -4391,10 +4979,10 @@ function showWaitingForMovieUI() {
     <div style="text-align:center;color:#fff;max-width:280px;padding:0 20px;">
       <div class="spinner" style="margin:0 auto 14px;"></div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:10px;">
-        호스트의 영화 정보를 기다리는 중...
+        ${escapeHtml(t('wait.titleFetching'))}
       </div>
       <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">
-        호스트와의 연결을 확인하는 중입니다
+        ${escapeHtml(t('wait.titleChecking'))}
       </div>
     </div>
   `;
@@ -4407,24 +4995,22 @@ function showRetryButton() {
     <div style="text-align:center;color:#fff;max-width:300px;padding:0 20px;">
       <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
       <div style="font-family:'Fraunces',serif;font-size:17px;margin-bottom:8px;">
-        호스트에게 연결할 수 없습니다
+        ${escapeHtml(t('wait.failTitle'))}
       </div>
       <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:18px;">
-        ${isRelayRetry
-          ? '여전히 연결이 안 되네요. 호스트가 자리를 비웠거나 차단된 환경일 수 있어요.'
-          : 'VPN 또는 방화벽이 P2P를 막고 있을 수 있어요.<br>아래 버튼으로 우회 모드를 켜고 재시도해보세요.'}
+        ${t(isRelayRetry ? 'wait.failBodyAfterRetry' : 'wait.failBodyFirst')}
       </div>
       ${!isRelayRetry ? `
       <button id="btn-retry-relay" class="btn btn-primary" style="display:inline-flex;width:auto;padding:10px 22px;">
-        🌐 우회 모드로 재시도
+        ${escapeHtml(t('wait.btnRelay'))}
       </button>
       <br>
       ` : ''}
       <button id="btn-retry-connect" class="btn ${isRelayRetry ? 'btn-primary' : 'btn-ghost'}" style="display:inline-flex;width:auto;padding:10px 22px;margin-top:8px;">
-        다시 시도
+        ${escapeHtml(t('wait.btnRetry'))}
       </button>
       <button id="btn-leave-from-wait" class="btn btn-ghost" style="display:inline-flex;width:auto;padding:10px 22px;margin-top:8px;">
-        나가기
+        ${escapeHtml(t('wait.btnLeave'))}
       </button>
     </div>
   `;
@@ -4496,7 +5082,7 @@ async function loadVideo() {
 
       console.log('[loadVideo] Using SW streaming:', swUrl);
       console.log('[loadVideo] Original path:', state.selectedFile.path);
-      addSystemMsg('스트리밍 재생 시작');
+      addSystemMsg(t('video.streamStarted'));
 
       player.src = swUrl;
       state.videoUrl = swUrl;  // CRITICAL: mark video as loaded so request-state responds
@@ -4532,8 +5118,8 @@ async function loadVideo() {
         if (err?.code === 4) {
           $('video-loading').style.display = 'none';
           $('video-loading').innerHTML = '<div class="spinner"></div>';
-          toast('이 영상의 코덱은 브라우저에서 지원하지 않습니다 (HEVC/H.265 등)', 5000);
-          addSystemMsg('⚠️ 재생 불가: 코덱 미지원. mp4(H.264) 영상을 사용해주세요.');
+          toast(t('video.codecToast'), 5000);
+          addSystemMsg(t('video.codecMsg'));
           return;
         }
         // Otherwise fall back to blob mode
@@ -4558,11 +5144,11 @@ async function loadVideoBlob() {
     const videoUrl = buildDavUrl(state.selectedFile.path);
     state.videoUrl = videoUrl;
 
-    toast('영상 다운로드 시작...', 3000);
+    toast(t('video.dlStart'), 3000);
     const fileSize = state.selectedFile.size;
     const sizeMB = Math.round(fileSize / 1024 / 1024);
     if (fileSize > 0) {
-      addSystemMsg(`영상 다운로드 중 (${sizeMB}MB) — 다운로드 후 재생됩니다`);
+      addSystemMsg(t('video.dlMsgFmt', { mb: sizeMB }));
     }
 
     const res = await fetch(videoUrl, {
@@ -4605,8 +5191,8 @@ async function loadVideoBlob() {
   } catch (err) {
     $('video-loading').style.display = 'none';
     $('video-loading').innerHTML = '<div class="spinner"></div>';
-    toast('영상 로드 실패: ' + err.message, 4000);
-    addSystemMsg('영상 로드 실패: ' + err.message);
+    toast(t('video.loadFailToastFmt', { err: err.message }), 4000);
+    addSystemMsg(t('video.loadFailMsgFmt', { err: err.message }));
   }
 }
 
@@ -4757,7 +5343,7 @@ player.addEventListener('timeupdate', () => {
 // User-initiated play/pause via button
 function userTogglePlay() {
   if (player.paused) {
-    player.play().catch(e => toast('재생 실패: ' + e.message));
+    player.play().catch(e => toast(t('video.playFailFmt', { err: e.message })));
   } else {
     player.pause();
   }
@@ -4835,16 +5421,16 @@ function notifyHostAction(data, targetTime, myTime, wasPaused) {
     if (absDelta < 1.5) return;
     if (absDelta < 60) {
       // Small jump: relative ("앞으로 10초"). Round to whole seconds.
-      const dir = delta > 0 ? '⏩ 앞으로' : '⏪ 뒤로';
-      toast(`${dir} ${Math.round(absDelta)}초 (호스트)`);
+      const dir = t(delta > 0 ? 'seek.fwd' : 'seek.back');
+      toast(t('seek.relativeFmt', { dir, sec: Math.round(absDelta) }));
     } else {
       // Big jump (e.g. progress-bar drag): absolute timestamp.
-      toast(`⏩ ${fmtTime(targetTime)} 위치로 이동 (호스트)`);
+      toast(t('seek.absoluteFmt', { time: fmtTime(targetTime) }));
     }
   } else if (data.action === 'play' && wasPaused) {
-    toast('▶️ 호스트가 재생');
+    toast(t('play.host'));
   } else if (data.action === 'pause' && !wasPaused) {
-    toast('⏸️ 호스트가 일시정지');
+    toast(t('pause.host'));
   }
 }
 
@@ -4869,10 +5455,9 @@ function showResumeOverlay() {
       <div style="width:80px;height:80px;border-radius:50%;background:var(--accent);margin:0 auto 16px;display:grid;place-items:center;box-shadow:0 0 0 8px rgba(255,87,34,0.2);">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
       </div>
-      <div style="font-family:'Fraunces',serif;font-size:18px;margin-bottom:6px;">탭해서 다시 재생</div>
+      <div style="font-family:'Fraunces',serif;font-size:18px;margin-bottom:6px;">${escapeHtml(t('tap.title'))}</div>
       <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5;">
-        브라우저 정책으로 한 번 탭이 필요해요<br>
-        호스트 시간으로 자동 동기화됩니다
+        ${t('tap.body')}
       </div>
     </div>
   `;
@@ -4943,14 +5528,14 @@ function closeQueueSheet() {
 
 async function loadQueueDirectory(path) {
   const list = $('queue-list');
-  list.innerHTML = '<div class="empty"><div class="spinner" style="margin: 0 auto 14px;"></div><div>불러오는 중...</div></div>';
+  list.innerHTML = `<div class="empty"><div class="spinner" style="margin: 0 auto 14px;"></div><div>${escapeHtml(t('browser.loading'))}</div></div>`;
   try {
     const items = await davList(path);
     state.queueBrowsePath = path;
     renderQueueCrumbs(path);
     renderQueueList(items);
   } catch (err) {
-    list.innerHTML = `<div class="empty"><div class="em">불러올 수 없습니다</div><div class="sub">${escapeHtml(err.message)}</div></div>`;
+    list.innerHTML = `<div class="empty"><div class="em">${escapeHtml(t('browser.loadFail'))}</div><div class="sub">${escapeHtml(err.message)}</div></div>`;
   }
 }
 
@@ -4974,7 +5559,7 @@ function renderQueueList(items) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </div>
       <div class="file-meta">
-        <div class="file-name">상위 폴더</div>
+        <div class="file-name">${escapeHtml(t('queue.parent'))}</div>
         <div class="file-sub">..</div>
       </div>
     `;
@@ -4988,7 +5573,7 @@ function renderQueueList(items) {
   if (items.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty';
-    empty.innerHTML = '<div class="em">비어있습니다</div>';
+    empty.innerHTML = `<div class="em">${escapeHtml(t('browser.empty'))}</div>`;
     list.appendChild(empty);
     return;
   }
@@ -5004,7 +5589,7 @@ function renderQueueList(items) {
       <div class="file-icon ${item.isDir ? 'folder' : (isVideo ? 'video' : '')}">${iconSvg}</div>
       <div class="file-meta">
         <div class="file-name">${escapeHtml(item.name)}</div>
-        <div class="file-sub">${item.isDir ? '폴더' : (item.ext ? item.ext.toUpperCase() + ' · ' : '') + fmtSize(item.size)}</div>
+        <div class="file-sub">${item.isDir ? escapeHtml(t('browser.fileFolderLabel')) : (item.ext ? item.ext.toUpperCase() + ' · ' : '') + fmtSize(item.size)}</div>
       </div>
     `;
     if (!item.isDir && !isVideo) {
@@ -5017,11 +5602,11 @@ function renderQueueList(items) {
         loadQueueDirectory(item.path);
       } else if (isVideo) {
         if (state.selectedFile && state.selectedFile.path === item.path) {
-          toast('이미 재생 중인 영화입니다');
+          toast(t('queue.toastAlreadyPlaying'));
           return;
         }
         setQueuedFile(item);
-        toast(`📋 다음 영화 큐: ${item.name}`);
+        toast(t('queue.toastQueuedFmt', { name: item.name }));
         closeQueueSheet();
       }
     });
@@ -5048,7 +5633,7 @@ function startQueueAutoTransition() {
   if (queueAutoTransitionTimer) return;
   if (!state.queuedFile) return;
   const next = state.queuedFile;
-  toast(`▶ 다음 영화 시작 (${Math.round(QUEUE_AUTO_TRANSITION_DELAY_MS/1000)}초 후): ${next.name}`);
+  toast(t('queue.toastStartingFmt', { sec: Math.round(QUEUE_AUTO_TRANSITION_DELAY_MS/1000), name: next.name }));
   queueAutoTransitionTimer = setTimeout(() => {
     queueAutoTransitionTimer = null;
     advanceToQueuedFile();
@@ -5059,7 +5644,7 @@ function cancelQueueAutoTransition({ silent = false } = {}) {
   if (!queueAutoTransitionTimer) return false;
   clearTimeout(queueAutoTransitionTimer);
   queueAutoTransitionTimer = null;
-  if (!silent) toast('다음 영화 자동 시작 취소됨');
+  if (!silent) toast(t('queue.toastAutoCancelled'));
   return true;
 }
 
@@ -5143,7 +5728,7 @@ $('btn-queue-up').addEventListener('click', () => {
 });
 $('btn-queue-clear').addEventListener('click', () => {
   clearQueuedFile();
-  toast('다음 영화 큐 취소됨');
+  toast(t('queue.toastCancelled'));
 });
 
 /* === Controls === */
@@ -5233,7 +5818,7 @@ function seekBy(delta) {
       if (!inside) return;
       const amount = useLong ? SEEK_LONG_DELTA : SEEK_SHORT_DELTA;
       seekBy(amount * dir);
-      toast(dir > 0 ? `${amount}초 »` : `« ${amount}초`, 800);
+      toast(t(dir > 0 ? 'seek.smallFwdFmt' : 'seek.smallBackFmt', { n: amount }), 800);
     });
 
     // System cancellation (call comes in, capture stolen, etc.) — silent abort.
@@ -5471,7 +6056,7 @@ $('toggle-vad').addEventListener('change', (e) => {
     // Restart VAD loop if needed
     if (!state.localVADRaf) startLocalVAD(state.micStream);
   }
-  toast(state.vadEnabled ? '자동 마이크 켜짐' : '자동 마이크 꺼짐 (항상 송출)');
+  toast(t(state.vadEnabled ? 'vol.toastVadOn' : 'vol.toastVadOff'));
 });
 
 // Ducking toggle
@@ -5490,7 +6075,7 @@ $('toggle-ducking').addEventListener('change', (e) => {
     state.duckingCurrentMultiplier = 1;
     if (player) player.volume = state.movieVolume;
   }
-  toast(state.duckingEnabled ? '자동 음량 감소 켜짐' : '자동 음량 감소 꺼짐');
+  toast(t(state.duckingEnabled ? 'vol.toastDuckOn' : 'vol.toastDuckOff'));
 });
 
 // Noise suppression toggle (Web Audio chain on outgoing mic)
@@ -5504,9 +6089,7 @@ try {
 $('toggle-noise-suppress').addEventListener('change', (e) => {
   state.noiseSuppressEnabled = e.target.checked;
   try { localStorage.setItem('cineparty.noiseSuppress', state.noiseSuppressEnabled); } catch(err) {}
-  toast(state.noiseSuppressEnabled
-    ? '노이즈 억제 켜짐 (다음 마이크 켤 때 적용)'
-    : '노이즈 억제 꺼짐 (다음 마이크 켤 때 적용)');
+  toast(t(state.noiseSuppressEnabled ? 'vol.toastNoiseOn' : 'vol.toastNoiseOff'));
 });
 
 /* =====================================================
@@ -5586,7 +6169,7 @@ async function refreshMicDeviceList() {
   for (const d of sorted) {
     const opt = document.createElement('option');
     opt.value = d.deviceId;
-    const name = d.label || `마이크 ${(d.deviceId || '').slice(0, 6)}…`;
+    const name = d.label || t('vol.micDeviceFallbackFmt', { id: (d.deviceId || '').slice(0, 6) });
     opt.textContent = isBtLabel(d.label) ? `🎧 ${name}` : `📱 ${name}`;
     select.appendChild(opt);
   }
@@ -5604,10 +6187,10 @@ async function refreshMicDeviceList() {
   const hint = $('mic-device-hint');
   if (hint) {
     if (!sorted.length) {
-      hint.textContent = '마이크 장치를 찾지 못했습니다. 권한을 확인하세요.';
+      hint.textContent = t('vol.micDeviceMissing');
       hint.style.display = 'block';
     } else if (!sorted.some(d => !isBtLabel(d.label))) {
-      hint.textContent = 'BT가 아닌 마이크를 찾지 못했습니다. 새로고침을 시도하거나 BT 헤드셋 모드를 사용하세요.';
+      hint.textContent = t('vol.micDeviceMissingNonBt');
       hint.style.display = 'block';
     } else {
       hint.style.display = 'none';
@@ -5641,7 +6224,7 @@ $('toggle-phone-mic').addEventListener('change', async (e) => {
   // leaving a hot mic on the wrong source with no clear error.
   if (state.micStarting) {
     e.target.checked = !enabled;
-    toast('마이크 전환 중 — 잠시 후 다시 시도하세요');
+    toast(t('mic.toastSwitching'));
     return;
   }
   setMicSourceSwitching(true);
@@ -5651,7 +6234,7 @@ $('toggle-phone-mic').addEventListener('change', async (e) => {
       const ok = await ensureMicLabels();
       if (!ok) {
         e.target.checked = false;
-        toast('마이크 권한이 필요합니다');
+        toast(t('mic.toastNeedPerm'));
         return;
       }
       await refreshMicDeviceList();
@@ -5676,8 +6259,8 @@ $('toggle-phone-mic').addEventListener('change', async (e) => {
       await enableMic();
     }
     toast(state.micSource === 'phone'
-      ? '📱 폰 내장 마이크 모드 (BT 스테레오 유지)'
-      : '🎧 BT 헤드셋 마이크 모드 (PTT 권장)');
+      ? t('vol.toastPhoneMode')
+      : t('vol.toastHeadsetMode'));
   } finally {
     setMicSourceSwitching(false);
   }
@@ -6044,10 +6627,10 @@ async function enableMic({ ptt = false } = {}) {
       // OverconstrainedError ⇒ saved deviceId is gone (USB unplugged, BT
       // dropped, etc). Refresh the list so the user can re-pick.
       if (err && err.name === 'OverconstrainedError' && state.micSource === 'phone') {
-        toast('선택된 마이크 장치를 찾을 수 없습니다. 목록을 새로고침합니다.');
+        toast(t('mic.toastDeviceMissing'));
         try { await refreshMicDeviceList(); } catch(_) {}
       } else {
-        toast('마이크 접근 실패: ' + err.message);
+        toast(t('mic.toastAccessFailFmt', { err: err.message }));
       }
     }
     return false;
@@ -6092,17 +6675,17 @@ function disableMic() {
 $('btn-mic').addEventListener('click', async () => {
   if (state.micOn) {
     if (state.micPtt) {
-      toast('PTT 사용 중 — 코너 버튼에서 손을 떼세요');
+      toast(t('mic.toastPttBusy'));
       return;
     }
     disableMic();
-    toast('마이크 꺼짐');
+    toast(t('mic.toastOff'));
   } else {
     const ok = await enableMic();
     if (ok) {
       toast(state.vadEnabled
-        ? '🎙️ 마이크 켜짐 (말할 때만 송출)'
-        : '🎙️ 마이크 켜짐 (항상 송출)');
+        ? t('mic.toastOnVad')
+        : t('mic.toastOnAlways'));
     }
   }
 });
@@ -6191,7 +6774,7 @@ function pttRelease() {
   zone.addEventListener('pointerdown', (e) => {
     // Latched mic via top-bar takes precedence — don't double-acquire.
     if (state.micOn && !state.micPtt) {
-      toast('상단 마이크 버튼이 켜져 있습니다');
+      toast(t('mic.toastTopOn'));
       return;
     }
     if (state.micStarting) return;
@@ -6421,8 +7004,8 @@ function renderParticipants() {
     el.innerHTML = `
       <div class="avatar ${info.speaking && info.micOn ? 'speaking-ring' : ''}" style="background:${info.color}">${escapeHtml(initial)}</div>
       <div class="p-info">
-        <div class="p-name">${escapeHtml(info.name)}${isMe ? ' (나)' : ''}${hostBadge}</div>
-        <div class="p-status"><span class="dot"></span>연결됨</div>
+        <div class="p-name">${escapeHtml(info.name)}${isMe ? escapeHtml(t('side.youSuffix')) : ''}${hostBadge}</div>
+        <div class="p-status"><span class="dot"></span>${escapeHtml(t('side.connected'))}</div>
       </div>
       <div class="p-icons">
         ${info.micOn
@@ -6440,19 +7023,16 @@ function renderParticipants() {
 function buildInviteText() {
   const baseUrl = window.location.origin + window.location.pathname;
   const inviteLink = baseUrl + '#code=' + state.roomCode;
-  const movieName = state.selectedFile?.name || '영화';
+  const movieName = state.selectedFile?.name || t('share.movieFallback');
 
   return {
     link: inviteLink,
-    text: `🎬 씨네 파티 초대!
-
-${state.myName}님이 함께 영화 보자고 합니다.
-오늘의 영화: ${movieName}
-
-▼ 아래 링크를 누르면 자동으로 입장돼요
-${inviteLink}
-
-또는 코드 직접 입력: ${state.roomCode}`
+    text: t('share.text', {
+      name: state.myName,
+      movie: movieName,
+      url: inviteLink,
+      code: state.roomCode,
+    }),
   };
 }
 
@@ -6477,11 +7057,11 @@ $('share-modal').addEventListener('click', (e) => {
 $('btn-copy-link').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($('share-link-input').value);
-    toast('링크 복사 완료');
+    toast(t('share.toastCopied'));
   } catch (e) {
     $('share-link-input').select();
     document.execCommand('copy');
-    toast('링크 복사 완료');
+    toast(t('share.toastCopied'));
   }
 });
 
@@ -6489,9 +7069,9 @@ $('btn-share-message').addEventListener('click', async () => {
   const { text } = buildInviteText();
   try {
     await navigator.clipboard.writeText(text);
-    toast('메시지 복사 완료! 카톡에 붙여넣기 하세요');
+    toast(t('share.toastMsgCopied'));
   } catch (e) {
-    toast('복사 실패: 위 메시지를 직접 복사해주세요', 3000);
+    toast(t('share.toastCopyFail'), 3000);
   }
 });
 
@@ -6500,7 +7080,7 @@ $('btn-native-share').addEventListener('click', async () => {
   if (navigator.share) {
     try {
       await navigator.share({
-        title: '씨네 파티 초대',
+        title: t('share.shareApiTitle'),
         text: text,
         url: link
       });
@@ -6511,16 +7091,16 @@ $('btn-native-share').addEventListener('click', async () => {
     // Fallback: copy
     try {
       await navigator.clipboard.writeText(text);
-      toast('공유 메뉴를 지원하지 않아 메시지를 복사했어요');
+      toast(t('share.toastShareUnsupported'));
     } catch (e) {
-      toast('공유 기능을 사용할 수 없습니다');
+      toast(t('share.toastShareFail'));
     }
   }
 });
 
 /* === Leave === */
 $('btn-leave').addEventListener('click', () => {
-  if (!confirm('파티에서 나가시겠습니까?')) return;
+  if (!confirm(t('leave.confirm'))) return;
   // Explicit leave: drop the resume-host session. (cleanup() itself no longer
   // does this because it also fires on every F5 via beforeunload.)
   clearHostSession();
@@ -6728,7 +7308,7 @@ async function autoLoadSubtitles() {
       // movie.ko.srt → "ko"; movie.srt → "자동 자막"; movie.eng.forced.srt → "eng.forced"
       let label = sub.name.replace(/\.(srt|vtt)$/i, '');
       if (label === basename) {
-        label = '자동 자막';
+        label = t('subs.itemAutoLabel');
       } else if (label.startsWith(basename + '.')) {
         label = label.slice(basename.length + 1);
       }
@@ -6764,7 +7344,7 @@ async function autoLoadSubtitles() {
     refreshSubMenu();
   }, 100);
 
-  toast(`자막 ${added}개 자동 로드`);
+  toast(t('subs.toastAutoLoadedFmt', { n: added }));
 }
 
 $('btn-subs').addEventListener('click', () => {
@@ -6818,7 +7398,7 @@ $('sub-file').addEventListener('change', async (e) => {
     refreshSubMenu();
   }, 100);
 
-  toast('자막 추가됨: ' + track.label);
+  toast(t('subs.toastAddedFmt', { label: track.label }));
   e.target.value = '';
   $('sub-menu').classList.remove('show');
 });
@@ -6831,7 +7411,7 @@ function refreshSubMenu() {
     item.className = 'sub-menu-item' + (tr.mode === 'showing' ? ' active' : '');
     item.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${tr.mode === 'showing' ? '<polyline points="20 6 9 17 4 12"/>' : ''}</svg>
-      ${escapeHtml(tr.label || '자막 ' + (i+1))}
+      ${escapeHtml(tr.label || (t('subs.itemAuto') + ' ' + (i+1)))}
     `;
     item.addEventListener('click', () => {
       for (const t of player.textTracks) t.mode = 'disabled';
@@ -7051,6 +7631,14 @@ async function sendCredsToSW() {
 
 // Register SW immediately on page load
 registerServiceWorker();
+
+// Apply translations and wire up the language toggle.
+// applyTranslations() runs whenever the language flips; both the lobby and
+// volume-menu toggle buttons share the same .lang-toggle hook.
+applyTranslations();
+document.querySelectorAll('.lang-toggle').forEach(btn => {
+  btn.addEventListener('click', toggleLang);
+});
 
 // Version banner — if you don't see this in the console, you're running an old cached copy!
 console.log('%c🎬 씨네 파티 v3 (background-pause-fix)', 'background:#ff5722;color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;');
