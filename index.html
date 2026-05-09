@@ -1845,7 +1845,7 @@
 <section id="lobby" class="screen active">
   <button class="lang-toggle" id="btn-lang" type="button" aria-label="Language">EN</button>
   <div class="marquee">
-    <div class="label">Now Showing</div>
+    <div class="label" data-i18n="lobby.nowShowing">Now Showing</div>
     <h1><span data-i18n="lobby.marqueeTitle">씨네 파티</span><em data-i18n="lobby.marqueeItalic">cinema · together</em></h1>
     <div class="sub">WEBDAV · WATCH · CHAT · TALK</div>
   </div>
@@ -1885,7 +1885,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
         <span data-i18n="role.host">호스트 (영화 고르고 방 만들기)</span>
       </button>
-      <div class="divider">OR</div>
+      <div class="divider" data-i18n="role.divider">OR</div>
       <button id="btn-role-guest" class="btn btn-ghost">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-3-3M19 11l3-3"/></svg>
         <span data-i18n="role.guest">게스트 (방 코드로 참여)</span>
@@ -2304,7 +2304,7 @@
     </div>
     <div class="modal-body">
       <div class="room-code-display">
-        <div class="label">Room Code</div>
+        <div class="label" data-i18n="share.roomCodeLabel">Room Code</div>
         <div class="code" id="modal-room-code">—</div>
       </div>
 
@@ -2396,6 +2396,9 @@ const STRINGS = {
     'doc.title': '씨네 파티 · WebDAV Watch Party',
     'lobby.marqueeTitle': '씨네 파티',
     'lobby.marqueeItalic': 'cinema · together',
+    'lobby.nowShowing': '상영 중',
+    'role.divider': '또는',
+    'share.roomCodeLabel': '방 코드',
 
     'resume.title': '이전 방으로 복귀',
     'resume.roomCodeLabel': '방 코드:',
@@ -2642,6 +2645,9 @@ const STRINGS = {
     'doc.title': 'Cine Party · WebDAV Watch Party',
     'lobby.marqueeTitle': 'Cine Party',
     'lobby.marqueeItalic': 'cinema · together',
+    'lobby.nowShowing': 'Now Showing',
+    'role.divider': 'OR',
+    'share.roomCodeLabel': 'Room Code',
 
     'resume.title': 'Return to previous room',
     'resume.roomCodeLabel': 'Room code:',
